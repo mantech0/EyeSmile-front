@@ -32,17 +32,17 @@ jobs:
         
       - name: Prepare for deployment
         run: |
-          cp web.config dist/
           mkdir -p deploy
           cp -r dist/* deploy/
           cp web.config deploy/
           cd deploy
+          ls -la
           zip -r ../release.zip ./*
         
       - name: Deploy to Azure Web App
+        id: deploy-to-webapp
         uses: azure/webapps-deploy@v2
         with:
           app-name: 'tech0-gen-8-step4-eyesmile'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_F90906F5F2994C96800591BC6F0D61C5 }}
           package: release.zip
-          clean: true
