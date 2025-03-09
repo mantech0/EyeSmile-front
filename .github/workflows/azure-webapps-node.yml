@@ -19,12 +19,18 @@ jobs:
       uses: actions/setup-node@v3
       with:
         node-version: '18'
+        cache: 'npm'
 
-    - name: Install Dependencies
-      run: npm install --legacy-peer-deps
+    - name: Clean install dependencies
+      run: |
+        rm -rf node_modules
+        rm -f package-lock.json
+        npm install
         
     - name: Build
-      run: npm run build
+      run: |
+        npm install -g rollup
+        npm run build
         
     - name: Zip artifact for deployment
       run: zip release.zip ./* -r
