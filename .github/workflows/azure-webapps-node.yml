@@ -30,8 +30,9 @@ jobs:
       - name: Build
         run: npm run build
         
-      - name: Zip artifact for deployment
+      - name: Prepare for deployment
         run: |
+          cp web.config dist/
           cd dist
           zip -r ../release.zip ./*
         
