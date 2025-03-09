@@ -25,6 +25,7 @@ jobs:
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
         
+      # デプロイ処理
       - name: Build And Deploy
         uses: Azure/static-web-apps-deploy@v1
         with:
