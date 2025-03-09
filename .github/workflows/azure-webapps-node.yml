@@ -30,23 +30,30 @@ jobs:
       - name: Build
         run: npm run build
         
+      - name: Debug Build Output
+        run: |
+          echo "=== Build Output Contents ==="
+          ls -la dist/
+          echo "=== index.html content ==="
+          cat dist/index.html
+        
       - name: Prepare for deployment
         run: |
-          # Create deployment package
-          mkdir -p deploy
-          cp -r dist/* deploy/
-          cp web.config deploy/
+          # Copy files directly (no intermediate directory)
+          cp web.config dist/
+          cd dist
           
-          # Create startup script
-          echo "<?php header('Location: /index.html'); ?>" > deploy/default.php
-          
-          # Check deployment contents
-          echo "=== Deployment Package Contents ==="
-          cd deploy
-          find . -type f
+          # List all files before zipping
+          echo "=== Files to be deployed ==="
+          find . -type f -exec ls -l {} \;
           
           # Create deployment package
-          zip -r ../release.zip ./*
+          zip -r ../release.zip .
+          cd ..
+          
+          # Verify zip contents
+          echo "=== Zip Contents ==="
+          unzip -l release.zip
         
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
@@ -55,3 +62,8 @@ jobs:
           app-name: 'tech0-gen-8-step4-eyesmile'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_F90906F5F2994C96800591BC6F0D61C5 }}
           package: release.zip
+          
+      - name: Post Deployment Debug
+        run: |
+          echo "Deployment completed. Check the Azure portal for the deployed files."
+          echo "URL: https://tech0-gen-8-step4-eyesmile.azurewebsites.net"
