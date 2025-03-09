@@ -23,7 +23,7 @@ jobs:
     - name: Install dependencies
       run: |
         npm cache clean --force
-        npm install --no-package-lock
+        npm install --legacy-peer-deps
         
     - name: Build
       run: npm run build
