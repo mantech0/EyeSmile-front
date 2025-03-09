@@ -32,11 +32,20 @@ jobs:
         
       - name: Prepare for deployment
         run: |
+          # Create deployment package
           mkdir -p deploy
           cp -r dist/* deploy/
           cp web.config deploy/
+          
+          # Create startup script
+          echo "<?php header('Location: /index.html'); ?>" > deploy/default.php
+          
+          # Check deployment contents
+          echo "=== Deployment Package Contents ==="
           cd deploy
-          ls -la
+          find . -type f
+          
+          # Create deployment package
           zip -r ../release.zip ./*
         
       - name: Deploy to Azure Web App
