@@ -23,18 +23,16 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: |
-          cd frontend
-          npm install --force
+        working-directory: ./frontend
+        run: npm install --force
           
       - name: Build
-        run: |
-          cd frontend
-          npm run build
+        working-directory: ./frontend
+        run: npm run build
         
       - name: Prepare for deployment
+        working-directory: ./frontend
         run: |
-          cd frontend
           cp web.config dist/
           cd dist
           zip -r ../../release.zip .
