@@ -55,4 +55,3 @@ jobs:
           app-name: 'tech0-gen-8-step4-eyesmile'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_F90906F5F2994C96800591BC6F0D61C5 }}
           package: release.zip
-          startup-command: 'npm start'
