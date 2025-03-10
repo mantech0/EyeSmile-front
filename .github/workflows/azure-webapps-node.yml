@@ -24,36 +24,20 @@ jobs:
 
       - name: Install dependencies
         run: |
+          cd frontend
           npm install --force
-          npm install @rollup/rollup-linux-x64-gnu --force
           
       - name: Build
-        run: npm run build
-        
-      - name: Debug Build Output
         run: |
-          echo "=== Build Output Contents ==="
-          ls -la dist/
-          echo "=== index.html content ==="
-          cat dist/index.html
+          cd frontend
+          npm run build
         
       - name: Prepare for deployment
         run: |
-          # Copy files directly (no intermediate directory)
+          cd frontend
           cp web.config dist/
           cd dist
-          
-          # List all files before zipping
-          echo "=== Files to be deployed ==="
-          find . -type f -exec ls -l {} \;
-          
-          # Create deployment package
-          zip -r ../release.zip .
-          cd ..
-          
-          # Verify zip contents
-          echo "=== Zip Contents ==="
-          unzip -l release.zip
+          zip -r ../../release.zip .
         
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
