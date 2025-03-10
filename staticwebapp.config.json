@@ -1,7 +1,7 @@
 {
   "navigationFallback": {
     "rewrite": "/index.html",
-    "exclude": ["/images/*.{png,jpg,gif}", "/css/*", "/js/*"]
+    "exclude": ["/images/*.{png,jpg,gif}", "/css/*", "/js/*", "/assets/*"]
   },
   "routes": [
     {
@@ -16,5 +16,11 @@
     ".css": "text/css",
     ".html": "text/html",
     ".svg": "image/svg+xml"
+  },
+  "globalHeaders": {
+    "cache-control": "no-cache",
+    "Content-Security-Policy": "default-src 'self' 'unsafe-inline' 'unsafe-eval' https://tech0-gen-8-step4-eyesmile-back.azurewebsites.net; img-src 'self' data: https:; style-src 'self' 'unsafe-inline';",
+    "X-Frame-Options": "DENY",
+    "X-Content-Type-Options": "nosniff"
   }
 } 
