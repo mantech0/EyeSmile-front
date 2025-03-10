@@ -44,11 +44,10 @@ jobs:
         run: |
           cp web.config dist/
           cd dist
+          echo '{ "scripts": { "start": "serve -s" } }' > package.json
+          npm install --production serve
           zip -r ../release.zip *
           cd ..
-          echo "Creating package.json for Azure..."
-          echo '{"name":"eyesmile-frontend","version":"1.0.0","engines":{"node":"18.x"}}' > package.json
-          zip -u release.zip package.json
         
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
@@ -56,3 +55,4 @@ jobs:
           app-name: 'tech0-gen-8-step4-eyesmile'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_F90906F5F2994C96800591BC6F0D61C5 }}
           package: release.zip
+          startup-command: 'npm start'
