@@ -22,8 +22,8 @@ jobs:
           pwd
           echo "Directory contents:"
           ls -la
-          echo "Searching for frontend directory:"
-          find . -type d -name "frontend"
+          echo "Full directory tree:"
+          find . -type d
           
       - name: Set up Node.js
         uses: actions/setup-node@v3
@@ -32,12 +32,20 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        working-directory: ./frontend
-        run: npm install --force
+        run: |
+          echo "Current directory before install:"
+          pwd
+          ls -la
+          cd EyeSmile/frontend || cd frontend || echo "Neither directory exists"
+          echo "Directory after cd:"
+          pwd
+          ls -la
+          npm install --force
           
       - name: Build
-        working-directory: ./frontend
-        run: npm run build
+        run: |
+          cd EyeSmile/frontend || cd frontend
+          npm run build
         env:
           VITE_API_URL: 'https://tech0-gen-8-step4-eyesmile-back.azurewebsites.net'
         
@@ -47,6 +55,6 @@ jobs:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
-          app_location: "frontend"
+          app_location: "EyeSmile/frontend"
           output_location: "dist"
           skip_app_build: false
