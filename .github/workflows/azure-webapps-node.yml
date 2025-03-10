@@ -41,10 +41,11 @@ jobs:
         env:
           VITE_API_URL: 'https://tech0-gen-8-step4-eyesmile-back.azurewebsites.net'
         
-      - name: Zip artifact for deployment
+      - name: Prepare deployment package
         run: |
+          cp web.config dist/
           cd dist
-          zip -r ../release.zip .
+          zip -r ../release.zip *
         
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
@@ -52,3 +53,4 @@ jobs:
           app-name: 'tech0-gen-8-step4-eyesmile'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_F90906F5F2994C96800591BC6F0D61C5 }}
           package: release.zip
+          type: 'zip'
