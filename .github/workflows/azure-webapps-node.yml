@@ -23,7 +23,7 @@ jobs:
           echo "Directory contents:"
           ls -la
           echo "Full directory tree:"
-          find . -type d
+          find . -maxdepth 3 -type d
           
       - name: Set up Node.js
         uses: actions/setup-node@v3
@@ -36,16 +36,10 @@ jobs:
           echo "Current directory before install:"
           pwd
           ls -la
-          cd EyeSmile/frontend || cd frontend || echo "Neither directory exists"
-          echo "Directory after cd:"
-          pwd
-          ls -la
           npm install --force
           
       - name: Build
-        run: |
-          cd EyeSmile/frontend || cd frontend
-          npm run build
+        run: npm run build
         env:
           VITE_API_URL: 'https://tech0-gen-8-step4-eyesmile-back.azurewebsites.net'
         
@@ -55,6 +49,6 @@ jobs:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
-          app_location: "EyeSmile/frontend"
+          app_location: "."
           output_location: "dist"
           skip_app_build: false
