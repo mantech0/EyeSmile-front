@@ -22,8 +22,6 @@ jobs:
           pwd
           echo "Directory contents:"
           ls -la
-          echo "Full directory tree:"
-          find . -maxdepth 3 -type d
           
       - name: Set up Node.js
         uses: actions/setup-node@v3
@@ -43,12 +41,14 @@ jobs:
         env:
           VITE_API_URL: 'https://tech0-gen-8-step4-eyesmile-back.azurewebsites.net'
         
-      - name: Deploy to Azure Static Web Apps
-        uses: Azure/static-web-apps-deploy@v1
+      - name: Zip artifact for deployment
+        run: |
+          cd dist
+          zip -r ../release.zip .
+        
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v2
         with:
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          action: "upload"
-          app_location: "."
-          output_location: "dist"
-          skip_app_build: false
+          app-name: 'tech0-gen-8-step4-eyesmile'
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_F90906F5F2994C96800591BC6F0D61C5 }}
+          package: release.zip
