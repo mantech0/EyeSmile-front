@@ -6,11 +6,12 @@ function App(): React.ReactElement {
 
   const checkHealth = async () => {
     try {
-      const response = await fetch('http://localhost:8001/api/v1/health')
+      const response = await fetch('https://tech0-gen-8-step4-eyesmile-back.azurewebsites.net/api/v1/health')
       const data = await response.json()
       setApiStatus(data.status)
     } catch (error) {
       setApiStatus('error')
+      console.error('API Error:', error)
     }
   }
 
