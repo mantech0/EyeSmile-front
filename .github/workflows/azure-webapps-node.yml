@@ -23,19 +23,16 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        working-directory: ./EyeSmile/frontend
         run: npm install --force
           
       - name: Build
-        working-directory: ./EyeSmile/frontend
         run: npm run build
         
       - name: Prepare for deployment
-        working-directory: ./EyeSmile/frontend
         run: |
           cp web.config dist/
           cd dist
-          zip -r ../../../release.zip .
+          zip -r ../release.zip .
         
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
