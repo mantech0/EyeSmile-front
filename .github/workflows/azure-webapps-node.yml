@@ -16,6 +16,15 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Debug directory structure
+        run: |
+          echo "Current directory:"
+          pwd
+          echo "Directory contents:"
+          ls -la
+          echo "Repository structure:"
+          tree || (apt-get update && apt-get install -y tree && tree)
+
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
@@ -24,12 +33,23 @@ jobs:
 
       - name: Install dependencies
         run: |
-          cd EyeSmile/frontend
+          if [ -d "EyeSmile/frontend" ]; then
+            cd EyeSmile/frontend
+          elif [ -d "frontend" ]; then
+            cd frontend
+          else
+            echo "Error: Frontend directory not found"
+            exit 1
+          fi
           npm install --force
           
       - name: Build
         run: |
-          cd EyeSmile/frontend
+          if [ -d "EyeSmile/frontend" ]; then
+            cd EyeSmile/frontend
+          elif [ -d "frontend" ]; then
+            cd frontend
+          fi
           npm run build
         env:
           VITE_API_URL: 'https://tech0-gen-8-step4-eyesmile-back.azurewebsites.net'
@@ -40,6 +60,6 @@ jobs:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
-          app_location: "EyeSmile/frontend"
+          app_location: "./frontend"
           output_location: "dist"
           skip_app_build: false
