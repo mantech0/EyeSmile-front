@@ -33,15 +33,18 @@ jobs:
         
       - name: Generate deployment package
         run: |
-          cd dist
-          echo '{ "name": "frontend", "scripts": { "start": "npx serve -s ." } }' > package.json
-          npm install --production serve
+          mkdir -p deploy
+          cp -r dist/* deploy/
+          cp web.config deploy/
+          cd deploy
+          echo '{ "name": "frontend", "version": "1.0.0", "scripts": { "start": "node server.js" } }' > package.json
+          echo 'const express = require("express"); const path = require("path"); const app = express(); app.use(express.static(".")); app.get("*", (req, res) => { res.sendFile(path.resolve(__dirname, "index.html")); }); const port = process.env.PORT || 8080; app.listen(port, () => { console.log(`Server is running on port ${port}`); });' > server.js
+          npm install express
           cd ..
-          cp web.config dist/
           
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
           app-name: 'tech0-gen-8-step4-eyesmile'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_F90906F5F2994C96800591BC6F0D61C5 }}
-          package: dist 
+          package: deploy 
