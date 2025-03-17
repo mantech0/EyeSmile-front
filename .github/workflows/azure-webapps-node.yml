@@ -34,19 +34,8 @@ jobs:
       - name: Prepare for deployment
         run: |
           cp web.config dist/
-          cd dist
-          echo '{ "name": "frontend", "version": "1.0.0", "scripts": { "start": "npx serve -s ." } }' > package.json
-          npm install --production serve
-          cd ..
-          
-      - name: Upload artifact for deployment
-        uses: actions/upload-artifact@v3
-        with:
-          name: node-app
-          path: dist
           
       - name: Deploy to Azure Web App
-        id: deploy-to-webapp
         uses: azure/webapps-deploy@v2
         with:
           app-name: 'tech0-gen-8-step4-eyesmile'
