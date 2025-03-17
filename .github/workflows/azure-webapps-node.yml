@@ -31,15 +31,11 @@ jobs:
         env:
           VITE_API_URL: 'https://tech0-gen-8-step4-eyesmile-back.azurewebsites.net'
         
-      - name: Generate deployment package
+      - name: Prepare for deployment
         run: |
-          mkdir -p deploy
-          cp -r dist/* deploy/
-          cp web.config deploy/
-          cd deploy
-          echo '{ "name": "frontend", "version": "1.0.0", "scripts": { "start": "node server.js" } }' > package.json
-          echo 'const express = require("express"); const path = require("path"); const app = express(); app.use(express.static(".")); app.get("*", (req, res) => { res.sendFile(path.resolve(__dirname, "index.html")); }); const port = process.env.PORT || 8080; app.listen(port, () => { console.log(`Server is running on port ${port}`); });' > server.js
-          npm install express
+          cp web.config dist/
+          cd dist
+          echo '{ "name": "frontend", "version": "1.0.0" }' > package.json
           cd ..
           
       - name: Deploy to Azure Web App
@@ -47,4 +43,4 @@ jobs:
         with:
           app-name: 'tech0-gen-8-step4-eyesmile'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_F90906F5F2994C96800591BC6F0D61C5 }}
-          package: deploy 
+          package: dist 
