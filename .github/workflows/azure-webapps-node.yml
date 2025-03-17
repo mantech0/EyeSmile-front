@@ -30,6 +30,30 @@ jobs:
           npm run build
         env:
           VITE_API_URL: 'https://tech0-gen-8-step4-eyesmile-back.azurewebsites.net'
+
+      - name: Add web.config
+        run: |
+          echo '<?xml version="1.0" encoding="utf-8"?>
+          <configuration>
+            <system.webServer>
+              <rewrite>
+                <rules>
+                  <rule name="SPA" stopProcessing="true">
+                    <match url=".*" />
+                    <conditions logicalGrouping="MatchAll">
+                      <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="true" />
+                      <add input="{REQUEST_FILENAME}" matchType="IsDirectory" negate="true" />
+                    </conditions>
+                    <action type="Rewrite" url="/" />
+                  </rule>
+                </rules>
+              </rewrite>
+              <staticContent>
+                <mimeMap fileExtension=".json" mimeType="application/json" />
+                <mimeMap fileExtension=".js" mimeType="application/javascript" />
+              </staticContent>
+            </system.webServer>
+          </configuration>' > dist/web.config
         
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
