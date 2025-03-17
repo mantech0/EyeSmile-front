@@ -5,13 +5,17 @@ interface NavigationButtonsProps {
     onPrev: () => void;
     canGoNext: boolean;
     canGoPrev: boolean;
+    isLastStep?: boolean;
+    isSubmitting?: boolean;
 }
 
 const NavigationButtons: React.FC<NavigationButtonsProps> = ({
     onNext,
     onPrev,
     canGoNext,
-    canGoPrev
+    canGoPrev,
+    isLastStep = false,
+    isSubmitting = false
 }) => {
     return (
         <div className="navigation-buttons">
@@ -19,6 +23,7 @@ const NavigationButtons: React.FC<NavigationButtonsProps> = ({
                 <button 
                     className="nav-button prev"
                     onClick={onPrev}
+                    disabled={isSubmitting}
                 >
                     前へ
                 </button>
@@ -27,8 +32,9 @@ const NavigationButtons: React.FC<NavigationButtonsProps> = ({
                 <button 
                     className="nav-button next"
                     onClick={onNext}
+                    disabled={isSubmitting}
                 >
-                    次へ
+                    {isLastStep ? (isSubmitting ? '送信中...' : '送信') : '次へ'}
                 </button>
             )}
         </div>

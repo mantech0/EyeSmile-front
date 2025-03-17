@@ -3,11 +3,15 @@ import { Question, Answer } from '../../types/questionnaire';
 import QuestionCard from './QuestionCard';
 import StepIndicator from './StepIndicator';
 import NavigationButtons from './NavigationButtons';
+import { submitQuestionnaire } from '../../services/api';
 import './questionnaire.css';
 
 const QuestionnaireContainer: React.FC = () => {
     const [currentStep, setCurrentStep] = useState(0);
     const [answers, setAnswers] = useState<Answer[]>([]);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isComplete, setIsComplete] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     // 仮のデータ（後でAPIから取得）
     const questions: Question[] = [
@@ -58,7 +62,29 @@ const QuestionnaireContainer: React.FC = () => {
         });
     };
 
+    const handleSubmit = async () => {
+        setIsSubmitting(true);
+        setError(null);
+        try {
+            await submitQuestionnaire(answers);
+            setIsComplete(true);
+        } catch (err) {
+            setError('回答の送信中にエラーが発生しました。もう一度お試しください。');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     const currentAnswers = answers.find(a => a.questionId === questions[currentStep].id)?.selectedOptions || [];
+
+    if (isComplete) {
+        return (
+            <div className="questionnaire-complete">
+                <h2>ありがとうございました！</h2>
+                <p>あなたに最適なアイウェアをご提案いたします。</p>
+            </div>
+        );
+    }
 
     return (
         <div className="questionnaire-container">
@@ -71,11 +97,20 @@ const QuestionnaireContainer: React.FC = () => {
                 onAnswer={handleAnswer}
                 currentAnswers={currentAnswers}
             />
+            {error && <div className="error-message">{error}</div>}
             <NavigationButtons
-                onNext={() => setCurrentStep(prev => Math.min(prev + 1, questions.length - 1))}
+                onNext={() => {
+                    if (currentStep === questions.length - 1) {
+                        handleSubmit();
+                    } else {
+                        setCurrentStep(prev => Math.min(prev + 1, questions.length - 1));
+                    }
+                }}
                 onPrev={() => setCurrentStep(prev => Math.max(prev - 1, 0))}
-                canGoNext={currentStep < questions.length - 1}
+                canGoNext={currentStep < questions.length - 1 || (currentStep === questions.length - 1 && currentAnswers.length > 0)}
                 canGoPrev={currentStep > 0}
+                isLastStep={currentStep === questions.length - 1}
+                isSubmitting={isSubmitting}
             />
         </div>
     );

@@ -120,4 +120,41 @@
     .question-text {
         font-size: 1.2rem;
     }
+}
+
+/* エラーメッセージ */
+.error-message {
+    color: #dc3545;
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    border-radius: 4px;
+    padding: 12px;
+    margin: 20px 0;
+    text-align: center;
+}
+
+/* 完了画面 */
+.questionnaire-complete {
+    text-align: center;
+    padding: 40px 20px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.questionnaire-complete h2 {
+    color: #646cff;
+    font-size: 2rem;
+    margin-bottom: 20px;
+}
+
+.questionnaire-complete p {
+    color: #333;
+    font-size: 1.2rem;
+}
+
+/* ボタンの無効化状態 */
+.nav-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 } 
