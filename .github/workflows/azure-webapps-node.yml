@@ -16,36 +16,25 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Debug directory structure
-        run: |
-          echo "Current directory:"
-          pwd
-          echo "Directory contents:"
-          ls -la
-          
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
-
+          cache: 'npm'
+          
       - name: Install dependencies
         run: |
-          echo "Current directory before install:"
-          pwd
-          ls -la
-          npm install --force
+          npm ci
           
       - name: Build
-        run: npm run build
+        run: |
+          npm run build
         env:
           VITE_API_URL: 'https://tech0-gen-8-step4-eyesmile-back.azurewebsites.net'
         
       - name: Prepare deployment package
         run: |
-          cp web.config dist/
           cd dist
-          echo '{ "scripts": { "start": "serve -s" } }' > package.json
-          npm install --production serve
           zip -r ../release.zip *
           cd ..
         
