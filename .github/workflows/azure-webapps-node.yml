@@ -31,7 +31,7 @@ jobs:
         env:
           VITE_API_URL: 'https://tech0-gen-8-step4-eyesmile-back.azurewebsites.net'
 
-      - name: Add web.config
+      - name: Add deployment files
         run: |
           echo '<?xml version="1.0" encoding="utf-8"?>
           <configuration>
@@ -58,6 +58,31 @@ jobs:
               </rewrite>
             </system.webServer>
           </configuration>' > dist/web.config
+          echo '# startup command
+          WEBSITES_PORT=8080' > dist/.env
+          echo 'const express = require("express");
+          const path = require("path");
+          const app = express();
+          app.use(express.static(path.join(__dirname)));
+          app.get("*", (req, res) => {
+            res.sendFile(path.join(__dirname, "index.html"));
+          });
+          const port = process.env.WEBSITES_PORT || 8080;
+          app.listen(port, () => {
+            console.log(`Server is running on port ${port}`);
+          });' > dist/server.js
+          echo '{
+            "name": "eyesmile-frontend",
+            "version": "1.0.0",
+            "private": true,
+            "scripts": {
+              "start": "node server.js"
+            },
+            "dependencies": {
+              "express": "^4.18.2"
+            }
+          }' > dist/package.json
+          cd dist && npm install
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
