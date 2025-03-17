@@ -31,46 +31,34 @@ jobs:
         env:
           VITE_API_URL: 'https://tech0-gen-8-step4-eyesmile-back.azurewebsites.net'
 
-      - name: Prepare for deployment
+      - name: Add web.config
         run: |
-          cp package.json dist/
           echo '<?xml version="1.0" encoding="utf-8"?>
           <configuration>
             <system.webServer>
-              <handlers>
-                <add name="iisnode" path="server.js" verb="*" modules="iisnode" />
-              </handlers>
+              <staticContent>
+                <remove fileExtension=".js" />
+                <remove fileExtension=".json" />
+                <remove fileExtension=".css" />
+                <mimeMap fileExtension=".js" mimeType="application/javascript" />
+                <mimeMap fileExtension=".json" mimeType="application/json" />
+                <mimeMap fileExtension=".css" mimeType="text/css" />
+              </staticContent>
               <rewrite>
                 <rules>
-                  <rule name="SPA Routes" stopProcessing="true">
+                  <rule name="Routes" stopProcessing="true">
                     <match url=".*" />
                     <conditions logicalGrouping="MatchAll">
                       <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="true" />
                       <add input="{REQUEST_FILENAME}" matchType="IsDirectory" negate="true" />
                     </conditions>
-                    <action type="Rewrite" url="/" />
+                    <action type="Rewrite" url="index.html" />
                   </rule>
                 </rules>
               </rewrite>
-              <staticContent>
-                <mimeMap fileExtension=".json" mimeType="application/json" />
-                <mimeMap fileExtension=".js" mimeType="application/javascript" />
-              </staticContent>
             </system.webServer>
           </configuration>' > dist/web.config
-          echo 'const express = require("express");
-          const path = require("path");
-          const app = express();
-          app.use(express.static(path.join(__dirname)));
-          app.get("*", (req, res) => {
-            res.sendFile(path.join(__dirname, "index.html"));
-          });
-          const port = process.env.PORT || 8080;
-          app.listen(port, () => {
-            console.log(`Server is running on port ${port}`);
-          });' > dist/server.js
-          cd dist && npm init -y && npm install express
-        
+
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
