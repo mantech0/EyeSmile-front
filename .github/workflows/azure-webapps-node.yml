@@ -23,30 +23,25 @@ jobs:
           
       - name: Install dependencies
         run: |
-          npm install --force
+          npm install
           
       - name: Build
         run: |
           npm run build
         env:
           VITE_API_URL: 'https://tech0-gen-8-step4-eyesmile-back.azurewebsites.net'
-          NODE_OPTIONS: '--max_old_space_size=4096'
         
-      - name: Setup deployment
-        run: |
-          mkdir -p dist
-          cp web.config dist/
-          echo '{ "routes": [ { "route": "/*", "serve": "/index.html", "statusCode": 200 } ] }' > dist/staticwebapp.config.json
-        
-      - name: Prepare deployment package
+      - name: Generate deployment package
         run: |
           cd dist
-          zip -r ../release.zip *
+          echo '{ "name": "frontend", "scripts": { "start": "npx serve -s ." } }' > package.json
+          npm install --production serve
           cd ..
-        
+          cp web.config dist/
+          
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
           app-name: 'tech0-gen-8-step4-eyesmile'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_F90906F5F2994C96800591BC6F0D61C5 }}
-          package: release.zip
+          package: dist 
