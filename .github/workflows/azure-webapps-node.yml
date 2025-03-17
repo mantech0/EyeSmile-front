@@ -23,17 +23,20 @@ jobs:
           
       - name: Install dependencies
         run: |
-          npm install
+          npm install --force
           
       - name: Build
         run: |
           npm run build
         env:
           VITE_API_URL: 'https://tech0-gen-8-step4-eyesmile-back.azurewebsites.net'
+          NODE_OPTIONS: '--max_old_space_size=4096'
         
-      - name: Copy web.config
+      - name: Setup deployment
         run: |
+          mkdir -p dist
           cp web.config dist/
+          echo '{ "routes": [ { "route": "/*", "serve": "/index.html", "statusCode": 200 } ] }' > dist/staticwebapp.config.json
         
       - name: Prepare deployment package
         run: |
