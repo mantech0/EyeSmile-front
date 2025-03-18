@@ -37,32 +37,46 @@ jobs:
           cp -r dist/* deploy/
           echo '<?xml version="1.0" encoding="utf-8"?>
           <configuration>
+            <location path="index.html">
+              <system.webServer>
+                <httpProtocol>
+                  <customHeaders>
+                    <add name="Cache-Control" value="no-cache" />
+                  </customHeaders>
+                </httpProtocol>
+              </system.webServer>
+            </location>
             <system.webServer>
-              <handlers>
-                <add name="StaticFile" path="*" verb="*" modules="StaticFileModule" resourceType="File" requireAccess="Read" />
-              </handlers>
               <staticContent>
                 <remove fileExtension=".js" />
                 <remove fileExtension=".css" />
                 <remove fileExtension=".json" />
+                <remove fileExtension=".html" />
                 <mimeMap fileExtension=".js" mimeType="application/javascript" />
                 <mimeMap fileExtension=".css" mimeType="text/css" />
                 <mimeMap fileExtension=".json" mimeType="application/json" />
+                <mimeMap fileExtension=".html" mimeType="text/html" />
+                <mimeMap fileExtension="." mimeType="text/html" />
               </staticContent>
               <rewrite>
                 <rules>
-                  <rule name="SPA" stopProcessing="true">
-                    <match url=".*" />
+                  <rule name="SPA" enabled="true" stopProcessing="true">
+                    <match url="^(?!.*\.(js|css|json|png|jpg|ico|svg)).*$" />
                     <conditions logicalGrouping="MatchAll">
                       <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="true" />
                       <add input="{REQUEST_FILENAME}" matchType="IsDirectory" negate="true" />
                     </conditions>
-                    <action type="Rewrite" url="/" />
+                    <action type="Rewrite" url="index.html" />
                   </rule>
                 </rules>
               </rewrite>
+              <httpErrors errorMode="Custom" defaultResponseMode="ExecuteURL">
+                <remove statusCode="404" />
+                <error statusCode="404" path="/index.html" responseMode="ExecuteURL" />
+              </httpErrors>
             </system.webServer>
           </configuration>' > deploy/web.config
+          echo '{ "platform": "static" }' > deploy/.deployment
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
