@@ -10,7 +10,7 @@ export const submitQuestionnaire = async (answers: Answer[]) => {
       {
         responses: answers.map(answer => ({
           question_id: answer.questionId,
-          selected_preference_ids: answer.selectedOptions.map(option => parseInt(option))
+          selected_preference_ids: [answer.selectedOptions[0]] // 単一選択の場合は配列の最初の要素のみを使用
         }))
       }
     );
