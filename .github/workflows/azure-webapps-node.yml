@@ -23,7 +23,7 @@ jobs:
           
       - name: Install dependencies
         run: |
-          npm install
+          npm ci
           
       - name: Build
         run: |
@@ -33,14 +33,15 @@ jobs:
 
       - name: Prepare for deployment
         run: |
-          echo '{ "name": "eyesmile-frontend", "scripts": { "start": "npx serve -s dist" }, "dependencies": { "serve": "^14.0.0" } }' > package.json
-          npm install
-          cp -r dist/* .
-          echo 'web: npx serve -s .' > Procfile
+          mkdir -p deploy
+          cp -r dist/* deploy/
+          cd deploy
+          echo '{ "name": "eyesmile-frontend", "scripts": { "start": "npx serve -s ." }, "dependencies": { "serve": "^14.0.0" } }' > package.json
+          npm install --production
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
           app-name: 'tech0-gen-8-step4-eyesmile'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_F90906F5F2994C96800591BC6F0D61C5 }}
-          package: . 
+          package: deploy 
