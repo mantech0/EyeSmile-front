@@ -7,13 +7,11 @@ import { submitFaceMeasurements } from './services/api';
 
 function App(): React.ReactElement {
   const [showCamera, setShowCamera] = useState(false);
-  const [faceMeasurements, setFaceMeasurements] = useState<FaceMeasurements | null>(null);
-  const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
 
   const handleCapture = async (measurements: FaceMeasurements, image: string) => {
-    setFaceMeasurements(measurements);
     setCapturedImage(image);
     setError(null);
     setIsSubmitting(true);
