@@ -6,7 +6,11 @@ import NavigationButtons from './NavigationButtons';
 import { submitQuestionnaire } from '../../services/api';
 import './questionnaire.css';
 
-const QuestionnaireContainer: React.FC = () => {
+interface QuestionnaireContainerProps {
+    onComplete: () => void;
+}
+
+const QuestionnaireContainer: React.FC<QuestionnaireContainerProps> = ({ onComplete }) => {
     const [currentStep, setCurrentStep] = useState(0);
     const [answers, setAnswers] = useState<Answer[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -68,6 +72,7 @@ const QuestionnaireContainer: React.FC = () => {
         try {
             await submitQuestionnaire(answers);
             setIsComplete(true);
+            onComplete();
         } catch (err) {
             setError('回答の送信中にエラーが発生しました。もう一度お試しください。');
         } finally {

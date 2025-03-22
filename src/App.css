@@ -27,4 +27,48 @@ button:hover {
 p {
   margin-top: 1rem;
   font-size: 1.1rem;
+}
+
+.error-message {
+  background-color: #ffebee;
+  color: #c62828;
+  padding: 12px;
+  border-radius: 4px;
+  margin: 10px 0;
+  text-align: center;
+}
+
+.loading-message {
+  background-color: #e3f2fd;
+  color: #1565c0;
+  padding: 12px;
+  border-radius: 4px;
+  margin: 10px 0;
+  text-align: center;
+}
+
+.camera-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+  padding: 2rem;
+}
+
+.captured-data {
+  background: #f5f5f5;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.captured-data h3 {
+  margin-bottom: 1rem;
+  color: #333;
+}
+
+.captured-data img {
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 } 
