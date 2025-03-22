@@ -8,7 +8,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 // Axiosインスタンスの作成
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 60000, // タイムアウトを60秒に延長
+  timeout: 300000, // タイムアウトを300秒に延長
   headers: {
     'Content-Type': 'application/json'
   }
