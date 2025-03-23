@@ -10,8 +10,10 @@ const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 300000, // タイムアウトを300秒に延長
   headers: {
-    'Content-Type': 'application/json'
-  }
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+  },
+  withCredentials: true // CORS with credentialsを有効化
 });
 
 // 選択肢とIDのマッピング
