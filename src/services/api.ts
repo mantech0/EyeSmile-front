@@ -3,15 +3,18 @@ import { Answer } from '../types/questionnaire';
 import { FaceMeasurements } from '../types/measurements';
 
 // APIのベースURL設定
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001';
 
 // Axiosインスタンスの作成
 const api = axios.create({
   baseURL: API_BASE_URL,
-  withCredentials: true,
+  withCredentials: false,
   headers: {
     'Content-Type': 'application/json'
-  }
+  },
+  // CORSリクエストモードを明示的に指定
+  // @ts-ignore
+  mode: 'cors'
 });
 
 // 選択肢とIDのマッピング

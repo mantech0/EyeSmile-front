@@ -1,0 +1,52 @@
+{
+  "hash": "0a6b3ed4",
+  "configHash": "48d0e280",
+  "lockfileHash": "64c8216c",
+  "browserHash": "aaed0492",
+  "optimized": {
+    "react": {
+      "src": "../../node_modules/react/index.js",
+      "file": "react.js",
+      "fileHash": "2f61dd9a",
+      "needsInterop": true
+    },
+    "react-dom/client": {
+      "src": "../../node_modules/react-dom/client.js",
+      "file": "react-dom_client.js",
+      "fileHash": "fcdb6dbc",
+      "needsInterop": true
+    },
+    "axios": {
+      "src": "../../node_modules/axios/index.js",
+      "file": "axios.js",
+      "fileHash": "19985f45",
+      "needsInterop": false
+    },
+    "@mediapipe/camera_utils": {
+      "src": "../../node_modules/@mediapipe/camera_utils/camera_utils.js",
+      "file": "@mediapipe_camera_utils.js",
+      "fileHash": "a56eccb8",
+      "needsInterop": true
+    },
+    "@mediapipe/face_mesh": {
+      "src": "../../node_modules/@mediapipe/face_mesh/face_mesh.js",
+      "file": "@mediapipe_face_mesh.js",
+      "fileHash": "cbbfe61b",
+      "needsInterop": true
+    },
+    "@mediapipe/drawing_utils": {
+      "src": "../../node_modules/@mediapipe/drawing_utils/drawing_utils.js",
+      "file": "@mediapipe_drawing_utils.js",
+      "fileHash": "529e47e1",
+      "needsInterop": true
+    }
+  },
+  "chunks": {
+    "chunk-3SOFIYQK": {
+      "file": "chunk-3SOFIYQK.js"
+    },
+    "chunk-HKJ2B2AA": {
+      "file": "chunk-HKJ2B2AA.js"
+    }
+  }
+}
