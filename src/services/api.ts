@@ -10,12 +10,27 @@ const api = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: false,
   headers: {
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
   },
   // CORSリクエストモードを明示的に指定
   // @ts-ignore
   mode: 'cors'
 });
+
+// レスポンスインターセプター追加
+api.interceptors.response.use(
+  response => response,
+  error => {
+    console.error('APIリクエストエラー:', error);
+    if (error.response) {
+      console.log('エラーレスポンス:', error.response.data);
+    } else if (error.request) {
+      console.log('レスポンスを受信できませんでした');
+    }
+    return Promise.reject(error);
+  }
+);
 
 // 選択肢とIDのマッピング
 const PREFERENCE_MAPPINGS: { [key: string]: number } = {
@@ -137,7 +152,8 @@ export const submitFaceMeasurements = async (measurements: FaceMeasurements) => 
     };
 
     console.log('送信する顔の測定データ:', requestData);
-    const response = await api.post('/api/v1/face-measurements/submit', requestData);
+    console.log('リクエストURL:', `${API_BASE_URL}/api/v1/questionnaire/face-measurements/submit`);
+    const response = await api.post('/api/v1/questionnaire/face-measurements/submit', requestData);
     console.log('レスポンス:', response.data);
     return response.data;
 

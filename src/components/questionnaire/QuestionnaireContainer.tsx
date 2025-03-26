@@ -70,9 +70,9 @@ const QuestionnaireContainer: React.FC<QuestionnaireContainerProps> = ({ onCompl
         setIsSubmitting(true);
         setError(null);
         try {
-            // CORSエラーのためAPIコールをスキップして直接カメラに進む
-            console.log('アンケート回答をスキップして直接カメラに進みます', answers);
-            // await submitQuestionnaire(answers); // 一時的にコメントアウト
+            // API通信を再開
+            console.log('アンケート回答を送信します', answers);
+            await submitQuestionnaire(answers);
             setIsComplete(true);
             onComplete();
         } catch (err) {
