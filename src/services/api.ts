@@ -3,7 +3,7 @@ import { Answer } from '../types/questionnaire';
 import { FaceMeasurements } from '../types/measurements';
 
 // APIのベースURL設定
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://tech0-gen-8-step4-eyesmile-back.azurewebsites.net';
 console.log('API Base URL:', API_BASE_URL);
 
 // Axiosインスタンスの作成
