@@ -4,30 +4,61 @@ import { FaceMeasurements } from '../types/measurements';
 
 // APIのベースURL設定
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001';
+console.log('API Base URL:', API_BASE_URL);
 
 // Axiosインスタンスの作成
 const api = axios.create({
   baseURL: API_BASE_URL,
-  withCredentials: false,
+  withCredentials: false,  // CORSでクレデンシャルを使用しない
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json'
   },
-  // CORSリクエストモードを明示的に指定
-  // @ts-ignore
-  mode: 'cors'
+  timeout: 15000,  // 15秒タイムアウト
 });
 
-// レスポンスインターセプター追加
+// デバッグ用：リクエスト前の処理
+api.interceptors.request.use(
+  config => {
+    console.log('API Request:', {
+      url: config.url,
+      method: config.method,
+      data: config.data
+    });
+    return config;
+  },
+  error => {
+    console.error('APIリクエスト前エラー:', error);
+    return Promise.reject(error);
+  }
+);
+
+// デバッグ用：レスポンス受信時の処理
 api.interceptors.response.use(
-  response => response,
+  response => {
+    console.log('API Response:', {
+      status: response.status,
+      data: response.data,
+      headers: response.headers
+    });
+    return response;
+  },
   error => {
     console.error('APIリクエストエラー:', error);
+    
+    // エラーの詳細をログに記録
     if (error.response) {
-      console.log('エラーレスポンス:', error.response.data);
+      console.log('エラーレスポンス:', {
+        status: error.response.status,
+        data: error.response.data,
+        headers: error.response.headers
+      });
     } else if (error.request) {
-      console.log('レスポンスを受信できませんでした');
+      console.log('レスポンスを受信できませんでした', error.request);
+    } else {
+      console.log('リクエスト設定エラー:', error.message);
     }
+    
     return Promise.reject(error);
   }
 );
