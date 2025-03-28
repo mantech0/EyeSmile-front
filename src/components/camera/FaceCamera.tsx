@@ -120,7 +120,13 @@ const FaceCamera: React.FC<FaceCameraProps> = ({ onCapture }) => {
 
     const faceMesh = new FaceMesh({
       locateFile: (file) => {
-        return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
+        console.log(`Loading MediaPipe file: ${file}`);
+        // プロキシを使用するか、直接CDNを使用するかの判断
+        // 開発環境ではプロキシを使用、本番環境では直接CDNを使用
+        const baseUrl = import.meta.env.DEV 
+          ? `/mediapipe-proxy/npm/@mediapipe/face_mesh@0.4.1633559619/` 
+          : `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/`;
+        return `${baseUrl}${file}`;
       }
     });
 
@@ -156,45 +162,65 @@ const FaceCamera: React.FC<FaceCameraProps> = ({ onCapture }) => {
         setMeasurements(measurements);
         
         // ランドマークを描画
-        drawConnectors(ctx, landmarks, FaceMesh.FACEMESH_TESSELATION, {
-          color: '#C0C0C070',
-          lineWidth: 1
-        });
+        try {
+          drawConnectors(ctx, landmarks, FaceMesh.FACEMESH_TESSELATION, {
+            color: '#C0C0C070',
+            lineWidth: 1
+          });
+          
+          // 重要な測定ポイントを強調表示
+          const points = [
+            landmarks[447], landmarks[227],  // こめかみ
+            landmarks[133], landmarks[362],  // 目の内角
+            landmarks[168], landmarks[2],    // 鼻の上部と下部
+            landmarks[123], landmarks[147], landmarks[162],  // 左頬
+            landmarks[352], landmarks[377], landmarks[392]   // 右頬
+          ];
 
-        // 重要な測定ポイントを強調表示
-        const points = [
-          landmarks[447], landmarks[227],  // こめかみ
-          landmarks[133], landmarks[362],  // 目の内角
-          landmarks[168], landmarks[2],    // 鼻の上部と下部
-          landmarks[123], landmarks[147], landmarks[162],  // 左頬
-          landmarks[352], landmarks[377], landmarks[392]   // 右頬
-        ];
-
-        ctx.fillStyle = '#FF0000';
-        points.forEach(point => {
-          ctx.beginPath();
-          ctx.arc(point.x * canvas.width, point.y * canvas.height, 3, 0, 2 * Math.PI);
-          ctx.fill();
-        });
+          ctx.fillStyle = '#FF0000';
+          points.forEach(point => {
+            ctx.beginPath();
+            ctx.arc(point.x * canvas.width, point.y * canvas.height, 3, 0, 2 * Math.PI);
+            ctx.fill();
+          });
+        } catch (error) {
+          console.error('ランドマーク描画中にエラーが発生しました:', error);
+        }
       }
     });
 
-    const camera = new Camera(videoRef.current, {
-      onFrame: async () => {
-        if (videoRef.current) {
-          await faceMesh.send({ image: videoRef.current });
-        }
-      },
-      width: 640,
-      height: 480
-    });
+    try {
+      console.log('MediaPipe Cameraを初期化しています...');
+      const camera = new Camera(videoRef.current, {
+        onFrame: async () => {
+          if (videoRef.current) {
+            try {
+              await faceMesh.send({ image: videoRef.current });
+            } catch (error) {
+              console.error('FaceMesh送信中にエラーが発生しました:', error);
+            }
+          }
+        },
+        width: 640,
+        height: 480
+      });
 
-    camera.start();
+      console.log('カメラを起動しています...');
+      camera.start().then(() => {
+        console.log('カメラが正常に起動しました');
+      }).catch(error => {
+        console.error('カメラの起動に失敗しました:', error);
+      });
 
-    return () => {
-      camera.stop();
-      faceMesh.close();
-    };
+      return () => {
+        console.log('カメラを停止しています...');
+        camera.stop();
+        faceMesh.close();
+      };
+    } catch (error) {
+      console.error('カメラ初期化中にエラーが発生しました:', error);
+      return () => {};
+    }
   }, []);
 
   return (

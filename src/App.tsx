@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
 import QuestionnaireContainer from './components/questionnaire/QuestionnaireContainer';
 import FaceCamera from './components/camera/FaceCamera';
@@ -10,6 +10,30 @@ function App(): React.ReactElement {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // MediaPipeのCDNファイルが正しくロードされているか確認
+    const checkMediaPipeLoaded = async () => {
+      try {
+        // FaceMeshの存在確認（直接importすると実行時エラーになる可能性があるため、このチェックは参考用）
+        console.log('MediaPipe依存関係をチェックしています...');
+        
+        // バージョン情報をコンソールに出力
+        console.log('MediaPipe Versions:');
+        console.log('@mediapipe/camera_utils:', process.env.npm_package_dependencies_mediapipe_camera_utils);
+        console.log('@mediapipe/drawing_utils:', process.env.npm_package_dependencies_mediapipe_drawing_utils);
+        console.log('@mediapipe/face_mesh:', process.env.npm_package_dependencies_mediapipe_face_mesh);
+      } catch (err) {
+        console.error('MediaPipe依存関係の確認中にエラーが発生しました:', err);
+        setCameraError('カメラ機能の初期化に問題が発生しました。ブラウザを更新してみてください。');
+      }
+    };
+
+    if (showCamera) {
+      checkMediaPipeLoaded();
+    }
+  }, [showCamera]);
 
   const handleCapture = async (measurements: FaceMeasurements, image: string) => {
     setCapturedImage(image);
@@ -37,7 +61,15 @@ function App(): React.ReactElement {
         </>
       ) : (
         <div className="camera-section">
-          <FaceCamera onCapture={handleCapture} />
+          {cameraError ? (
+            <div className="error-message">
+              <h3>カメラエラー</h3>
+              <p>{cameraError}</p>
+              <button onClick={() => window.location.reload()}>ページを更新</button>
+            </div>
+          ) : (
+            <FaceCamera onCapture={handleCapture} />
+          )}
           {error && (
             <div className="error-message">
               {error}
