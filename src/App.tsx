@@ -5,14 +5,7 @@ import FaceCamera from './components/camera/FaceCamera';
 import type { FaceMeasurements } from './types/measurements';
 import { submitFaceMeasurements } from './services/api';
 
-// グローバルMediaPipe型定義
-declare global {
-  interface Window {
-    FaceMesh?: any;
-    Camera?: any;
-    drawConnectors?: any;
-  }
-}
+// グローバル型定義は types/global.d.ts に移動しました
 
 function App(): React.ReactElement {
   const [showCamera, setShowCamera] = useState(false);

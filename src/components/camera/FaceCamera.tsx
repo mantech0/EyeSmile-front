@@ -5,14 +5,7 @@ import React, { useRef, useEffect, useState } from 'react';
 // import { drawConnectors } from '@mediapipe/drawing_utils';
 import './FaceCamera.css';
 
-// グローバル変数の型定義
-declare global {
-  interface Window {
-    FaceMesh: any;
-    Camera: any;
-    drawConnectors: any;
-  }
-}
+// グローバル型定義は types/global.d.ts に移動しました
 
 interface FaceMeasurements {
   faceWidth: number;    // mm単位
