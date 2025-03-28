@@ -1,8 +1,18 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Camera } from '@mediapipe/camera_utils';
-import { FaceMesh } from '@mediapipe/face_mesh';
-import { drawConnectors } from '@mediapipe/drawing_utils';
+// MediaPipeをグローバルから取得するため、importを削除
+// import { Camera } from '@mediapipe/camera_utils';
+// import { FaceMesh } from '@mediapipe/face_mesh';
+// import { drawConnectors } from '@mediapipe/drawing_utils';
 import './FaceCamera.css';
+
+// グローバル変数の型定義
+declare global {
+  interface Window {
+    FaceMesh: any;
+    Camera: any;
+    drawConnectors: any;
+  }
+}
 
 interface FaceMeasurements {
   faceWidth: number;    // mm単位
@@ -118,78 +128,84 @@ const FaceCamera: React.FC<FaceCameraProps> = ({ onCapture }) => {
   useEffect(() => {
     if (!videoRef.current || !canvasRef.current) return;
 
-    const faceMesh = new FaceMesh({
-      locateFile: (file) => {
-        console.log(`Loading MediaPipe file: ${file}`);
-        // プロキシを使用するか、直接CDNを使用するかの判断
-        // 開発環境ではプロキシを使用、本番環境では直接CDNを使用
-        const baseUrl = import.meta.env.DEV 
-          ? `/mediapipe-proxy/npm/@mediapipe/face_mesh@0.4.1633559619/` 
-          : `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/`;
-        return `${baseUrl}${file}`;
-      }
-    });
+    // グローバルから取得
+    const FaceMesh = window.FaceMesh;
+    const Camera = window.Camera;
+    const drawConnectors = window.drawConnectors;
 
-    faceMesh.setOptions({
-      maxNumFaces: 1,
-      refineLandmarks: true,
-      minDetectionConfidence: 0.5,
-      minTrackingConfidence: 0.5
-    });
-
-    faceMesh.onResults((results) => {
-      if (!results.multiFaceLandmarks || !canvasRef.current) return;
-
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
-
-      if (results.multiFaceLandmarks.length > 0) {
-        const landmarks = results.multiFaceLandmarks[0];
-        
-        // 顔の測定値を計算
-        const measurements: FaceMeasurements = {
-          faceWidth: calculateFaceWidth(landmarks),
-          eyeDistance: calculateEyeDistance(landmarks),
-          cheekArea: calculateCheekArea(landmarks),
-          noseHeight: calculateNoseHeight(landmarks),
-          templePosition: calculateTemplePosition(landmarks)
-        };
-
-        setMeasurements(measurements);
-        
-        // ランドマークを描画
-        try {
-          drawConnectors(ctx, landmarks, FaceMesh.FACEMESH_TESSELATION, {
-            color: '#C0C0C070',
-            lineWidth: 1
-          });
-          
-          // 重要な測定ポイントを強調表示
-          const points = [
-            landmarks[447], landmarks[227],  // こめかみ
-            landmarks[133], landmarks[362],  // 目の内角
-            landmarks[168], landmarks[2],    // 鼻の上部と下部
-            landmarks[123], landmarks[147], landmarks[162],  // 左頬
-            landmarks[352], landmarks[377], landmarks[392]   // 右頬
-          ];
-
-          ctx.fillStyle = '#FF0000';
-          points.forEach(point => {
-            ctx.beginPath();
-            ctx.arc(point.x * canvas.width, point.y * canvas.height, 3, 0, 2 * Math.PI);
-            ctx.fill();
-          });
-        } catch (error) {
-          console.error('ランドマーク描画中にエラーが発生しました:', error);
-        }
-      }
-    });
+    if (!FaceMesh || !Camera || !drawConnectors) {
+      console.error('MediaPipeライブラリがグローバルに読み込まれていません');
+      return;
+    }
 
     try {
+      console.log('FaceMeshを初期化しています...');
+      const faceMesh = new FaceMesh({
+        locateFile: (file: string) => {
+          console.log(`Loading MediaPipe file: ${file}`);
+          return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/${file}`;
+        }
+      });
+
+      faceMesh.setOptions({
+        maxNumFaces: 1,
+        refineLandmarks: true,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5
+      });
+
+      faceMesh.onResults((results: any) => {
+        if (!results.multiFaceLandmarks || !canvasRef.current) return;
+
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+
+        if (results.multiFaceLandmarks.length > 0) {
+          const landmarks = results.multiFaceLandmarks[0];
+          
+          // 顔の測定値を計算
+          const measurements: FaceMeasurements = {
+            faceWidth: calculateFaceWidth(landmarks),
+            eyeDistance: calculateEyeDistance(landmarks),
+            cheekArea: calculateCheekArea(landmarks),
+            noseHeight: calculateNoseHeight(landmarks),
+            templePosition: calculateTemplePosition(landmarks)
+          };
+
+          setMeasurements(measurements);
+          
+          // ランドマークを描画
+          try {
+            drawConnectors(ctx, landmarks, FaceMesh.FACEMESH_TESSELATION, {
+              color: '#C0C0C070',
+              lineWidth: 1
+            });
+            
+            // 重要な測定ポイントを強調表示
+            const points = [
+              landmarks[447], landmarks[227],  // こめかみ
+              landmarks[133], landmarks[362],  // 目の内角
+              landmarks[168], landmarks[2],    // 鼻の上部と下部
+              landmarks[123], landmarks[147], landmarks[162],  // 左頬
+              landmarks[352], landmarks[377], landmarks[392]   // 右頬
+            ];
+
+            ctx.fillStyle = '#FF0000';
+            points.forEach(point => {
+              ctx.beginPath();
+              ctx.arc(point.x * canvas.width, point.y * canvas.height, 3, 0, 2 * Math.PI);
+              ctx.fill();
+            });
+          } catch (error) {
+            console.error('ランドマーク描画中にエラーが発生しました:', error);
+          }
+        }
+      });
+
       console.log('MediaPipe Cameraを初期化しています...');
       const camera = new Camera(videoRef.current, {
         onFrame: async () => {
@@ -208,7 +224,7 @@ const FaceCamera: React.FC<FaceCameraProps> = ({ onCapture }) => {
       console.log('カメラを起動しています...');
       camera.start().then(() => {
         console.log('カメラが正常に起動しました');
-      }).catch(error => {
+      }).catch((error: any) => {
         console.error('カメラの起動に失敗しました:', error);
       });
 

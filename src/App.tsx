@@ -5,6 +5,15 @@ import FaceCamera from './components/camera/FaceCamera';
 import type { FaceMeasurements } from './types/measurements';
 import { submitFaceMeasurements } from './services/api';
 
+// グローバルMediaPipe型定義
+declare global {
+  interface Window {
+    FaceMesh?: any;
+    Camera?: any;
+    drawConnectors?: any;
+  }
+}
+
 function App(): React.ReactElement {
   const [showCamera, setShowCamera] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -16,14 +25,17 @@ function App(): React.ReactElement {
     // MediaPipeのCDNファイルが正しくロードされているか確認
     const checkMediaPipeLoaded = async () => {
       try {
-        // FaceMeshの存在確認（直接importすると実行時エラーになる可能性があるため、このチェックは参考用）
+        // グローバルオブジェクトでMediaPipeの利用可能性をチェック
         console.log('MediaPipe依存関係をチェックしています...');
+        console.log('MediaPipe Globals:');
+        console.log('FaceMesh available:', window.FaceMesh ? 'Yes' : 'No');
+        console.log('Camera available:', window.Camera ? 'Yes' : 'No');
+        console.log('drawConnectors available:', window.drawConnectors ? 'Yes' : 'No');
         
-        // バージョン情報をコンソールに出力
-        console.log('MediaPipe Versions:');
-        console.log('@mediapipe/camera_utils:', process.env.npm_package_dependencies_mediapipe_camera_utils);
-        console.log('@mediapipe/drawing_utils:', process.env.npm_package_dependencies_mediapipe_drawing_utils);
-        console.log('@mediapipe/face_mesh:', process.env.npm_package_dependencies_mediapipe_face_mesh);
+        // いずれかが利用できない場合はエラーを表示
+        if (!window.FaceMesh || !window.Camera || !window.drawConnectors) {
+          throw new Error('MediaPipeライブラリが正しく読み込まれていません');
+        }
       } catch (err) {
         console.error('MediaPipe依存関係の確認中にエラーが発生しました:', err);
         setCameraError('カメラ機能の初期化に問題が発生しました。ブラウザを更新してみてください。');
