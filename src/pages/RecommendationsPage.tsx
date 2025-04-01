@@ -25,7 +25,7 @@ const RecommendationsPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // URLクエリパラメータまたはlocation stateから顔測定データを取得
+  // URLクエリパラメータまたはlocation stateから顔測定データを取得　
   const getFaceMeasurementData = (): FaceData => {
     try {
       // locationのstateから取得を試みる
