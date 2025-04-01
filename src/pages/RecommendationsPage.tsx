@@ -1,47 +1,126 @@
 import React, { useEffect, useState } from 'react';
-import { Container, Typography, CircularProgress, Box, Alert, Button } from '@mui/material';
+import { Container, Typography, Box, Alert, Button, CircularProgress } from '@mui/material';
 import GlassesRecommendation from '../components/recommendations/GlassesRecommendation';
-import { getGlassesRecommendations, RecommendationResponse, FaceData, StylePreference, FrameRecommendation } from '../api/recommendations';
+import AnalyzingScreen from '../components/recommendations/AnalyzingScreen';
+import { 
+  getGlassesRecommendations, 
+  RecommendationResponse, 
+  FaceData, 
+  StylePreference, 
+  FrameRecommendation,
+  getAllFrames,
+  generateAIExplanation
+} from '../api/recommendations';
 import { useNavigate, useLocation } from 'react-router-dom';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import { API_BASE_URL } from '../config';
 
 const RecommendationsPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [recommendations, setRecommendations] = useState<RecommendationResponse | null>(null);
+  const [availableFrames, setAvailableFrames] = useState<number>(0);
+  const [generatingAIExplanation, setGeneratingAIExplanation] = useState(false);
   
   const navigate = useNavigate();
   const location = useLocation();
   
+  // URLクエリパラメータまたはlocation stateから顔測定データを取得
+  const getFaceMeasurementData = (): FaceData => {
+    try {
+      // locationのstateから取得を試みる
+      if (location.state && location.state.faceMeasurements) {
+        const measurements = location.state.faceMeasurements;
+        return {
+          face_width: measurements.faceWidth || 140.0,
+          eye_distance: measurements.eyeDistance || 65.0,
+          cheek_area: measurements.cheekArea || 45.0,
+          nose_height: measurements.noseHeight || 45.0,
+          temple_position: measurements.templePosition || 82.0
+        };
+      }
+      
+      // データがない場合はデフォルト値を使用
+      return {
+        face_width: 140.0,
+        eye_distance: 65.0,
+        cheek_area: 45.0,
+        nose_height: 45.0,
+        temple_position: 82.0
+      };
+    } catch (error) {
+      console.error('顔測定データの取得エラー:', error);
+      // エラー時はデフォルト値を使用
+      return {
+        face_width: 140.0,
+        eye_distance: 65.0,
+        cheek_area: 45.0,
+        nose_height: 45.0,
+        temple_position: 82.0
+      };
+    }
+  };
+  
+  useEffect(() => {
+    const checkFrameAvailability = async () => {
+      try {
+        const frames = await getAllFrames();
+        setAvailableFrames(frames.length);
+        console.log(`使用可能なフレーム数: ${frames.length}`);
+      } catch (error) {
+        console.error('フレーム数の確認エラー:', error);
+      }
+    };
+    
+    checkFrameAvailability();
+  }, []);
+  
   useEffect(() => {
     const fetchRecommendations = async () => {
       try {
-        // 実際のアプリケーションでは、locationからのstate（測定データとスタイル好み）を使用
-        // または前のステップで取得したデータを使用
+        setLoading(true);
         
-        // デモ用のダミーデータ
-        const dummyFaceData: FaceData = {
-          face_width: 145,
-          eye_distance: 65,
-          cheek_area: 120,
-          nose_height: 50,
-          temple_position: 70
+        // 顔データの取得
+        const faceData = getFaceMeasurementData();
+        console.log('使用する顔測定データ:', faceData);
+        
+        // スタイル設定
+        // 実際のアプリではユーザーの回答から生成することもできます
+        const stylePreference: StylePreference = {
+          personal_color: "冬",
+          preferred_styles: ["クラシック", "ビジネス"],
+          preferred_shapes: ["ラウンド", "スクエア"],
+          preferred_materials: ["チタン"],
+          preferred_colors: ["ブラック", "シルバー"]
         };
         
-        const dummyStylePreference: StylePreference = {
-          personal_color: 'Autumn',
-          preferred_styles: ['クラシック', 'カジュアル'],
-          preferred_shapes: ['ラウンド'],
-          preferred_materials: ['チタン', 'アセテート'],
-          preferred_colors: ['ブラック', 'ゴールド']
-        };
+        // APIからレコメンデーションを取得
+        let recommendationData: RecommendationResponse;
         
-        const result = await getGlassesRecommendations(dummyFaceData, dummyStylePreference);
-        setRecommendations(result);
+        try {
+          // 本番APIを呼び出し
+          recommendationData = await getGlassesRecommendations(
+            faceData,
+            stylePreference
+          );
+          console.log("API Response:", recommendationData);
+        } catch (apiError) {
+          console.error("API error:", apiError);
+          
+          // APIが失敗した場合はローカルのサンプルデータを使用
+          console.log("Falling back to sample data");
+          const response = await fetch('/sample-data/recommendations.json');
+          recommendationData = await response.json();
+        }
+        
+        // ローディング状態をシミュレート (デモ用: 本番では削除してください)
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        setRecommendations(recommendationData);
         setLoading(false);
-      } catch (err) {
-        console.error('推薦の取得中にエラーが発生しました:', err);
-        setError('メガネの推薦を取得できませんでした。もう一度お試しください。');
+      } catch (error) {
+        console.error('Error fetching recommendations:', error);
+        setError('レコメンデーションの取得中にエラーが発生しました。もう一度お試しください。');
         setLoading(false);
       }
     };
@@ -49,65 +128,125 @@ const RecommendationsPage: React.FC = () => {
     fetchRecommendations();
   }, [location]);
   
-  const handleTryOn = (frameRecommendation: FrameRecommendation) => {
-    // バーチャル試着機能へのナビゲーション（未実装）
-    console.log('バーチャル試着が選択されました:', frameRecommendation);
-    // navigate('/try-on', { state: { frame: frameRecommendation.frame } });
+  // 主要な推薦フレームが変更されたときにAI説明を生成
+  useEffect(() => {
+    if (recommendations && !generatingAIExplanation) {
+      generateFrameExplanation(recommendations.primary_recommendation);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recommendations]);
+
+  const generateFrameExplanation = async (frameRecommendation: FrameRecommendation) => {
+    if (!frameRecommendation || generatingAIExplanation) return;
     
-    // 実装前の通知
-    alert('バーチャル試着機能は現在開発中です。もうしばらくお待ちください。');
+    try {
+      setGeneratingAIExplanation(true);
+      
+      // 顔データとスタイル設定を取得
+      const faceData = getFaceMeasurementData();
+      const stylePreference = {
+        personal_color: "冬",
+        preferred_styles: ["クラシック", "ビジネス"],
+        preferred_shapes: ["ラウンド", "スクエア"],
+        preferred_materials: ["チタン"],
+        preferred_colors: ["ブラック", "シルバー"]
+      };
+      
+      // AI説明を生成
+      const response = await generateAIExplanation(
+        frameRecommendation.frame,
+        faceData,
+        stylePreference
+      );
+      
+      if (response.status === 'success' && recommendations) {
+        // 既存の推薦オブジェクトをコピー
+        const updatedRecommendations = { ...recommendations };
+        
+        // 説明部分を更新
+        updatedRecommendations.recommendation_details = {
+          fit_explanation: response.explanation.fit_explanation,
+          style_explanation: response.explanation.style_explanation,
+          feature_highlights: response.explanation.feature_highlights
+        };
+        
+        // 状態を更新
+        setRecommendations(updatedRecommendations);
+      }
+    } catch (error) {
+      console.error('AIによる説明生成中にエラーが発生しました:', error);
+    } finally {
+      setGeneratingAIExplanation(false);
+    }
+  };
+  
+  const handleGoBack = () => {
+    navigate('/');
+  };
+  
+  const handleTryOn = (frameRecommendation: FrameRecommendation) => {
+    console.log('Try on frame:', frameRecommendation);
+    // 未実装: 試着機能
+    alert(`「${frameRecommendation.frame.name}」を試着機能は現在開発中です`);
   };
   
   const handleFeedback = (feedback: { frameId: number; rating: number; comment?: string }) => {
-    // フィードバックの送信処理（未実装）
-    console.log('フィードバックが送信されました:', feedback);
-    // APIへのフィードバック送信ロジックはここに追加
+    console.log('Feedback:', feedback);
+    // 未実装: フィードバック送信機能
+    alert('フィードバックをいただきありがとうございます！');
+  };
+  
+  const renderContent = () => {
+    if (loading) {
+      return <AnalyzingScreen />;
+    }
+    
+    if (error) {
+      return (
+        <Box sx={{ my: 4 }}>
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+          <Button variant="contained" onClick={() => window.location.reload()}>
+            再試行
+          </Button>
+        </Box>
+      );
+    }
+    
+    if (!recommendations) {
+      return (
+        <Box sx={{ my: 4, textAlign: 'center' }}>
+          <CircularProgress />
+          <Typography sx={{ mt: 2 }}>
+            データを読み込み中...
+          </Typography>
+        </Box>
+      );
+    }
+    
+    return (
+      <GlassesRecommendation 
+        recommendation={recommendations}
+        onTryOn={handleTryOn}
+        onFeedback={handleFeedback}
+      />
+    );
   };
   
   return (
-    <Container maxWidth="lg">
-      <Box sx={{ my: 3, display: 'flex', alignItems: 'center' }}>
-        <Button
-          startIcon={<ArrowBackIcon />}
-          onClick={() => navigate(-1)}
+    <Container>
+      <Box sx={{ my: 2, display: 'flex', alignItems: 'center' }}>
+        <Button 
+          startIcon={<ArrowBackIcon />} 
+          onClick={handleGoBack}
           sx={{ mr: 2 }}
         >
           戻る
         </Button>
-        <Typography variant="h4" component="h1">
-          メガネ推薦結果
-        </Typography>
       </Box>
       
-      {loading ? (
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', my: 10 }}>
-          <CircularProgress size={60} />
-          <Typography variant="h6" sx={{ mt: 2 }}>
-            あなたに最適なメガネを探しています...
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            顔の特徴とスタイル好みに基づいてぴったりの組み合わせを検索中
-          </Typography>
-        </Box>
-      ) : error ? (
-        <Alert 
-          severity="error" 
-          sx={{ my: 4 }}
-          action={
-            <Button color="inherit" size="small" onClick={() => window.location.reload()}>
-              再試行
-            </Button>
-          }
-        >
-          {error}
-        </Alert>
-      ) : (
-        <GlassesRecommendation
-          recommendation={recommendations || undefined}
-          onTryOn={handleTryOn}
-          onFeedback={handleFeedback}
-        />
-      )}
+      {renderContent()}
     </Container>
   );
 };

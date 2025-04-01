@@ -1,29 +1,27 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Typography,
-  Card,
-  CardContent,
   CardMedia,
-  Grid,
-  Chip,
   Divider,
   Paper,
   Button,
-  Rating,
-  Skeleton,
   useTheme,
-  useMediaQuery
+  useMediaQuery,
+  Container,
+  LinearProgress,
+  Card,
+  CardContent,
+  CardActions,
+  Grid
 } from '@mui/material';
 import {
   RecommendationResponse,
   FrameRecommendation
 } from '../../api/recommendations';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import FavoriteIcon from '@mui/icons-material/Favorite';
-import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
-import LocalShippingIcon from '@mui/icons-material/LocalShipping';
+import ThumbUpIcon from '@mui/icons-material/ThumbUp';
 import StoreIcon from '@mui/icons-material/Store';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 
 interface GlassesRecommendationProps {
   recommendation?: RecommendationResponse;
@@ -40,10 +38,10 @@ const GlassesRecommendation: React.FC<GlassesRecommendationProps> = ({
   onTryOn,
   onFeedback
 }) => {
+  const [selectedFrameIndex, setSelectedFrameIndex] = useState(0);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [selectedFrame, setSelectedFrame] = React.useState<FrameRecommendation | null>(null);
-  const [rating, setRating] = React.useState<number | null>(null);
   
   React.useEffect(() => {
     if (recommendation?.primary_recommendation) {
@@ -52,26 +50,7 @@ const GlassesRecommendation: React.FC<GlassesRecommendationProps> = ({
   }, [recommendation]);
   
   if (loading) {
-    return (
-      <Box sx={{ my: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          <Skeleton width="60%" />
-        </Typography>
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={6}>
-            <Skeleton variant="rectangular" height={400} />
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <Skeleton variant="text" height={60} />
-            <Skeleton variant="text" height={30} />
-            <Skeleton variant="text" height={30} />
-            <Skeleton variant="text" height={30} />
-            <Skeleton variant="rectangular" height={100} sx={{ my: 2 }} />
-            <Skeleton variant="rectangular" width={120} height={36} />
-          </Grid>
-        </Grid>
-      </Box>
-    );
+    return null; // ローディング表示はAnalyzingScreenコンポーネントに任せる
   }
   
   if (error) {
@@ -106,6 +85,50 @@ const GlassesRecommendation: React.FC<GlassesRecommendationProps> = ({
   const { primary_recommendation, alternative_recommendations, face_analysis, recommendation_details } = recommendation;
   const { frame } = selectedFrame;
   
+  // 商品画像のURLをチェックして適切な画像を表示する
+  const getFrameImageUrl = (urls: string[] | undefined, index: number = 0): string => {
+    console.log("画像URL配列:", urls);
+    
+    // 開発環境ではダミー画像を使用
+    if (import.meta.env.DEV) {
+      console.log("開発環境ではローカルのダミー画像を使用します");
+      
+      // ブランド名とスタイルから適切なファイル名を生成（真正面の画像を使用）
+      const brandClean = frame.brand.toLowerCase().replace(/\s+/g, '-');
+      const styleClean = frame.style.toLowerCase().replace(/\s+/g, '-');
+      const filename = `${brandClean}-${styleClean}.jpg`;
+      
+      // Zoffブランドの場合は既存のダミー画像を使用
+      if (frame.brand.includes("Zoff")) {
+        return "/images/frames/zoff-sporty-round.jpg";
+      }
+      
+      return `/images/frames/${filename}`;
+    }
+    
+    if (!urls || urls.length === 0) {
+      // デフォルトのプレースホルダー画像
+      console.log("URLが見つからないため、デフォルト画像を使用します");
+      return `https://placehold.jp/4fc3f7/ffffff/400x300.png?text=${encodeURIComponent(frame.brand + ' ' + frame.name)}`;
+    }
+    
+    const url = urls[index];
+    console.log("選択された画像URL:", url);
+    
+    if (url.startsWith('http')) {
+      return url;
+    } else if (url.startsWith('/')) {
+      // 相対パスの場合は絶対URLに変換
+      const baseUrl = window.location.origin;
+      console.log("相対パスを絶対URLに変換:", `${baseUrl}${url}`);
+      return `${baseUrl}${url}`;
+    } else {
+      // 商品IDに基づいたプレースホルダー
+      console.log("不正なURL形式のため、プレースホルダーを使用します");
+      return `https://placehold.jp/4fc3f7/ffffff/400x300.png?text=${encodeURIComponent(frame.brand + ' ' + frame.name)}`;
+    }
+  };
+  
   // 表示用に価格をフォーマット
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('ja-JP', {
@@ -115,261 +138,293 @@ const GlassesRecommendation: React.FC<GlassesRecommendationProps> = ({
   };
   
   return (
-    <Box sx={{ py: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom sx={{ mb: 3 }}>
-        あなたにぴったりのメガネ
-      </Typography>
-      
-      <Paper sx={{ p: 2, mb: 3 }}>
-        <Typography variant="subtitle1">
-          <strong>顔分析結果:</strong> あなたは「{face_analysis.face_shape}」の顔型です
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          あなたの顔型に合わせて、{face_analysis.style_category}スタイルのフレームを中心にご提案しています。
-        </Typography>
-      </Paper>
-      
-      <Grid container spacing={4}>
-        {/* メインの推薦フレーム表示 */}
-        <Grid item xs={12} md={5}>
-          <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-            <CardMedia
-              component="img"
-              image={frame.image_urls[0] || "https://placehold.jp/300x200.png"}
-              alt={frame.name}
-              sx={{ 
-                height: 300, 
-                objectFit: 'contain',
-                backgroundColor: '#f5f5f5'
+    <Box sx={{ my: 4, mx: 'auto', maxWidth: isMobile ? '100%' : '1200px', px: isMobile ? 2 : 4 }}>
+      {/* 顔型分析結果 (RESULT) */}
+      <Box sx={{ mb: 4 }}>
+        <Paper sx={{ p: 3, mx: 'auto', maxWidth: '600px' }}>
+          <Typography 
+            variant="h6" 
+            gutterBottom 
+            align="center"
+            sx={{ 
+              pb: 1, 
+              mb: 2, 
+              borderBottom: '1px solid #e0e0e0' 
+            }}
+          >
+            RESULT
+          </Typography>
+          
+          <Typography variant="subtitle1" align="center" gutterBottom sx={{ fontWeight: 'bold' }}>
+            {face_analysis.style_category}な{face_analysis.face_shape}
+          </Typography>
+          
+          {/* デバッグ用に現在の顔型を表示 */}
+          {process.env.NODE_ENV === 'development' && (
+            <Typography variant="caption" align="center" sx={{ display: 'block', mb: 1, color: 'gray' }}>
+              顔型: {face_analysis.face_shape}
+            </Typography>
+          )}
+          
+          <Box 
+            sx={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              my: 3,
+              position: 'relative',
+              flexDirection: 'column',
+              alignItems: 'center'
+            }}
+          >
+            {/* 顔型アイコン - 青い人型モデル */}
+            <Box
+              sx={{
+                width: '100%',
+                maxWidth: 200,
+                mb: 3,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
               }}
-            />
-            <CardContent sx={{ flexGrow: 1 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                <Typography variant="h5" component="h2">
-                  {frame.name}
-                </Typography>
-                <Typography variant="h6" color="primary">
-                  {formatPrice(frame.price)}
-                </Typography>
-              </Box>
-              
-              <Typography variant="subtitle1" color="text.secondary" gutterBottom>
-                {frame.brand}
-              </Typography>
-              
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, my: 1 }}>
-                <Chip label={frame.style} size="small" />
-                <Chip label={frame.shape} size="small" />
-                <Chip label={frame.material} size="small" />
-                <Chip label={frame.color} size="small" />
-              </Box>
-              
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="body2">
-                  <strong>フレーム幅:</strong> {frame.frame_width}mm
-                </Typography>
-                <Typography variant="body2">
-                  <strong>レンズ幅:</strong> {frame.lens_width}mm
-                </Typography>
-                <Typography variant="body2">
-                  <strong>ブリッジ幅:</strong> {frame.bridge_width}mm
-                </Typography>
-                <Typography variant="body2">
-                  <strong>テンプル長:</strong> {frame.temple_length}mm
-                </Typography>
-              </Box>
-              
-              <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
-                <Button 
-                  variant="contained" 
-                  color="primary" 
-                  fullWidth
-                  onClick={() => onTryOn && onTryOn(selectedFrame)}
-                >
-                  バーチャル試着
-                </Button>
-                <Button 
-                  variant="outlined" 
-                  color="primary"
-                  sx={{ minWidth: 'auto', px: 1 }}
-                >
-                  <FavoriteBorderIcon />
-                </Button>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-        
-        {/* 推薦の詳細表示 */}
-        <Grid item xs={12} md={7}>
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="h5" gutterBottom>
-              推薦理由
-            </Typography>
-            <Typography variant="body1" paragraph>
-              {selectedFrame.recommendation_reason}
-            </Typography>
-            
-            <Paper sx={{ p: 2, mb: 3, bgcolor: '#f8f9fa' }}>
-              <Typography variant="h6" gutterBottom>
-                フィット評価
-              </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <Rating 
-                  value={selectedFrame.fit_score / 20} 
-                  precision={0.5} 
-                  readOnly 
-                  sx={{ mr: 1 }}
-                />
-                <Typography variant="body2">
-                  {selectedFrame.fit_score}/100
-                </Typography>
-              </Box>
-              <Typography variant="body2" paragraph>
-                {recommendation_details.fit_explanation}
-              </Typography>
-              
-              <Divider sx={{ my: 2 }} />
-              
-              <Typography variant="h6" gutterBottom>
-                スタイル評価
-              </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <Rating 
-                  value={selectedFrame.style_score / 20} 
-                  precision={0.5} 
-                  readOnly 
-                  sx={{ mr: 1 }}
-                />
-                <Typography variant="body2">
-                  {selectedFrame.style_score}/100
-                </Typography>
-              </Box>
-              <Typography variant="body2" paragraph>
-                {recommendation_details.style_explanation}
-              </Typography>
-            </Paper>
-            
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                特徴
-              </Typography>
-              <Grid container spacing={1}>
-                {recommendation_details.feature_highlights.map((feature, index) => (
-                  <Grid item key={index}>
-                    <Chip
-                      icon={<CheckCircleIcon />}
-                      label={feature}
-                      color="primary"
-                      variant="outlined"
-                    />
-                  </Grid>
-                ))}
-              </Grid>
+            >
+              <svg width="200" height="200" viewBox="0 0 200 200">
+                {/* 頭部 - 青い顔型モデル */}
+                <g>
+                  {/* 頭 */}
+                  <ellipse cx="100" cy="90" rx="60" ry="70" fill="#4FC3F7" />
+                  <ellipse cx="100" cy="95" rx="50" ry="60" fill="#29B6F6" />
+
+                  {/* 顔のディテール */}
+                  <rect x="75" y="70" width="50" height="8" rx="4" fill="#0288D1" opacity="0.5" />
+                  <circle cx="75" cy="80" r="5" fill="#0288D1" opacity="0.7" />
+                  <circle cx="125" cy="80" r="5" fill="#0288D1" opacity="0.7" />
+                  <path d="M85 105 Q100 115 115 105" stroke="#0288D1" strokeWidth="2" fill="none" />
+
+                  {/* 測定データの表示 */}
+                  {/* 顔幅のマーカー */}
+                  <line x1="40" y1="90" x2="160" y2="90" stroke="#E53935" strokeWidth="1" strokeDasharray="4" />
+                  <line x1="40" y1="85" x2="40" y2="95" stroke="#E53935" strokeWidth="2" />
+                  <line x1="160" y1="85" x2="160" y2="95" stroke="#E53935" strokeWidth="2" />
+                  <text x="100" y="40" fontSize="12" textAnchor="middle" fill="#E53935" fontWeight="bold">顔幅: 140mm</text>
+                  
+                  {/* 目の距離のマーカー */}
+                  <line x1="75" y1="80" x2="125" y2="80" stroke="#FF9800" strokeWidth="1" strokeDasharray="4" />
+                  <circle cx="75" cy="80" r="2" stroke="#FF9800" strokeWidth="2" fill="#FF9800" />
+                  <circle cx="125" cy="80" r="2" stroke="#FF9800" strokeWidth="2" fill="#FF9800" />
+                  <text x="100" y="70" fontSize="11" textAnchor="middle" fill="#FF9800" fontWeight="bold">目の距離: 65mm</text>
+                  
+                  {/* 頬の大きさのマーカー */}
+                  <path d="M65 95 Q90 120 135 95" stroke="#4CAF50" strokeWidth="1" strokeDasharray="4" fill="none" />
+                  <text x="100" y="140" fontSize="11" textAnchor="middle" fill="#4CAF50" fontWeight="bold">頬の大きさ: 45㎠</text>
+                </g>
+                
+                {/* 顔型の種類 */}
+                <text x="100" y="180" fontSize="14" textAnchor="middle" fill="#3d4070" fontWeight="bold">
+                  {face_analysis.face_shape}
+                </text>
+              </svg>
             </Box>
             
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                購入オプション
+            {/* 測定値ボックス（削除） */}
+          </Box>
+          
+          <Box sx={{ mb: 3, maxWidth: '400px', mx: 'auto' }}>
+            <Typography variant="subtitle2" gutterBottom align="center">
+              顔の立体感
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Typography variant="caption" sx={{ width: '30%' }}>
+                メリハリ
               </Typography>
-              <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 2 }}>
-                <Button 
-                  variant="contained" 
-                  color="primary" 
-                  startIcon={<LocalShippingIcon />} 
-                  sx={{ flex: 1 }}
-                >
-                  オンラインで購入
-                </Button>
-                <Button 
-                  variant="outlined" 
-                  color="primary" 
-                  startIcon={<StoreIcon />} 
-                  sx={{ flex: 1 }}
-                >
-                  店舗を検索
-                </Button>
-              </Box>
-            </Box>
-            
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                あなたの評価
-              </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <Rating
-                  value={rating}
-                  onChange={(_, newValue) => {
-                    setRating(newValue);
-                    onFeedback && onFeedback({
-                      frameId: frame.id,
-                      rating: newValue || 0
-                    });
-                  }}
-                  icon={<FavoriteIcon fontSize="inherit" />}
-                  emptyIcon={<FavoriteBorderIcon fontSize="inherit" />}
+              <Box sx={{ width: '40%' }}>
+                <LinearProgress 
+                  variant="determinate" 
+                  value={75} 
+                  sx={{ 
+                    height: 8, 
+                    borderRadius: 5,
+                    background: 'linear-gradient(to right, #FF6B6B, #FFE66D)'
+                  }} 
                 />
-                <Typography variant="body2" sx={{ ml: 1 }}>
-                  {rating ? `${rating}点を評価しました` : '評価してください'}
-                </Typography>
               </Box>
+              <Typography variant="caption" align="right" sx={{ width: '30%' }}>
+                マイルド
+              </Typography>
             </Box>
           </Box>
-        </Grid>
-      </Grid>
-      
-      {/* 代替推薦 */}
-      {alternative_recommendations.length > 0 && (
-        <Box sx={{ mt: 4 }}>
-          <Typography variant="h5" gutterBottom>
-            その他のおすすめ
-          </Typography>
-          <Grid container spacing={2}>
-            {alternative_recommendations.map((altRec) => (
-              <Grid item xs={12} sm={6} md={3} key={altRec.frame.id}>
-                <Card 
+          
+          <Box sx={{ mb: 3, maxWidth: '400px', mx: 'auto' }}>
+            <Typography variant="subtitle2" gutterBottom align="center">
+              顔の構造
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Typography variant="caption" sx={{ width: '30%' }}>
+                シャープ
+              </Typography>
+              <Box sx={{ width: '40%' }}>
+                <LinearProgress 
+                  variant="determinate" 
+                  value={60}
                   sx={{ 
-                    height: '100%', 
-                    cursor: 'pointer',
-                    transition: 'transform 0.2s',
-                    '&:hover': {
-                      transform: 'scale(1.02)',
-                      boxShadow: 3
-                    },
-                    border: selectedFrame.frame.id === altRec.frame.id ? '2px solid' : 'none',
-                    borderColor: 'primary.main'
+                    height: 8, 
+                    borderRadius: 5,
+                    background: 'linear-gradient(to right, #5B86E5, #36D1DC)'
                   }}
-                  onClick={() => setSelectedFrame(altRec)}
-                >
-                  <CardMedia
-                    component="img"
-                    image={altRec.frame.image_urls[0] || "https://placehold.jp/300x200.png"}
-                    alt={altRec.frame.name}
-                    sx={{ height: 140, objectFit: 'contain', bgcolor: '#f5f5f5' }}
-                  />
-                  <CardContent>
-                    <Typography variant="h6" component="h3" noWrap>
-                      {altRec.frame.name}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" noWrap>
-                      {altRec.frame.brand} - {altRec.frame.style}
-                    </Typography>
-                    <Typography variant="body1" sx={{ fontWeight: 'bold', mt: 1 }}>
-                      {formatPrice(altRec.frame.price)}
-                    </Typography>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                      <Rating value={altRec.total_score / 20} precision={0.5} readOnly size="small" />
-                      <Typography variant="caption" sx={{ ml: 1 }}>
-                        {Math.round(altRec.total_score)}点
-                      </Typography>
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-        </Box>
-      )}
+                />
+              </Box>
+              <Typography variant="caption" align="right" sx={{ width: '30%' }}>
+                ラウンド
+              </Typography>
+            </Box>
+          </Box>
+        </Paper>
+      </Box>
+      
+      {/* メイン推薦フレーム (あなたに似合うアイウェア) */}
+      <Box sx={{ mb: 4 }}>
+        <Typography 
+          variant="h5" 
+          component="h2" 
+          gutterBottom 
+          sx={{ 
+            mb: 3, 
+            fontWeight: 'bold',
+            textAlign: 'center' 
+          }}
+        >
+          あなたに似合うアイウェア
+        </Typography>
+        
+        <Card 
+          sx={{ 
+            maxWidth: '600px',
+            mx: 'auto',
+            display: 'flex', 
+            flexDirection: 'column',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.1)' 
+          }}
+        >
+          <CardMedia
+            component="img"
+            image={getFrameImageUrl(frame.image_urls)}
+            alt={frame.name}
+            sx={{ 
+              height: 300,
+              objectFit: 'contain',
+              borderBottom: '1px solid #f0f0f0',
+              background: '#fafafa'
+            }}
+            onError={(e) => {
+              console.error("画像の読み込みに失敗しました:", e);
+              // 画像が読み込めなかった場合はプレースホルダーを設定
+              (e.target as HTMLImageElement).src = `https://placehold.jp/4fc3f7/ffffff/400x300.png?text=${encodeURIComponent(frame.brand + ' ' + frame.name)}`;
+            }}
+          />
+          
+          <CardContent sx={{ flexGrow: 1 }}>
+            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+              {frame.brand}
+            </Typography>
+            <Typography variant="h6" component="h3" gutterBottom sx={{ fontWeight: 'bold' }}>
+              {frame.name}
+            </Typography>
+            <Typography variant="body2" sx={{ mb: 2 }}>
+              {frame.style} - {frame.shape} - {frame.material}
+            </Typography>
+            
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="body2" color="text.secondary">
+                {frame.frame_width}mm x {frame.lens_height}mm
+              </Typography>
+              <Typography variant="h6" color="primary" sx={{ fontWeight: 'bold' }}>
+                {formatPrice(frame.price)}
+              </Typography>
+            </Box>
+            
+            <Divider sx={{ mb: 2 }} />
+            
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              フィット度: {Math.round(selectedFrame.fit_score)}%
+            </Typography>
+            <LinearProgress 
+              variant="determinate" 
+              value={selectedFrame.fit_score} 
+              color="success"
+              sx={{ mb: 2, height: 6, borderRadius: 3 }}
+            />
+            
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              スタイル度: {Math.round(selectedFrame.style_score)}%
+            </Typography>
+            <LinearProgress 
+              variant="determinate" 
+              value={selectedFrame.style_score} 
+              color="info"
+              sx={{ height: 6, borderRadius: 3 }}
+            />
+          </CardContent>
+          
+          <CardActions sx={{ p: 2, pt: 0 }}>
+            <Button 
+              variant="contained" 
+              fullWidth
+              onClick={() => onTryOn && onTryOn(selectedFrame)}
+              startIcon={<ThumbUpIcon />}
+              size="large"
+              sx={{ mr: 1 }}
+            >
+              アイウェアを試す
+            </Button>
+            
+            <Button 
+              variant="outlined"
+              fullWidth
+              onClick={() => onFeedback && onFeedback({ frameId: frame.id, rating: 4 })}
+              startIcon={<StoreIcon />}
+              size="large"
+            >
+              相談する
+            </Button>
+          </CardActions>
+        </Card>
+      </Box>
+      
+      {/* WHY - 推薦理由 */}
+      <Box sx={{ mb: 4 }}>
+        <Paper sx={{ p: 3, maxWidth: '800px', mx: 'auto' }}>
+          <Typography 
+            variant="h6" 
+            gutterBottom
+            align="center"
+            sx={{ 
+              pb: 1, 
+              mb: 2, 
+              borderBottom: '1px solid #e0e0e0' 
+            }}
+          >
+            WHY - なぜこのメガネが似合うのか
+          </Typography>
+          
+          <Typography variant="body1" paragraph>
+            {recommendation_details.fit_explanation}
+          </Typography>
+          
+          <Typography variant="body1" paragraph>
+            {recommendation_details.style_explanation}
+          </Typography>
+        </Paper>
+      </Box>
+      
+      {/* 免責事項/コピーライト */}
+      <Box sx={{ mt: 8, mb: 4, textAlign: 'center' }}>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+          これらの推薦はデータに基づいた自動生成です。実際の試着をお勧めします。
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          © 2023 EyeSmile メガネレコメンデーションシステム
+        </Typography>
+      </Box>
     </Box>
   );
 };
