@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Box, Typography, Container, CircularProgress } from '@mui/material';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Box, Typography, Container, CircularProgress, Button } from '@mui/material';
 
 interface AnalyzingScreenProps {
   isDemo?: boolean;
@@ -14,6 +14,12 @@ const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({
 }) => {
   const [dots, setDots] = useState("......");
   const [timer, setTimer] = useState(0);
+  const [showSkipButton, setShowSkipButton] = useState(false);
+  
+  // タイマー参照を保持
+  const autoCompleteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const forceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // 自動完了処理
   const handleAutoComplete = useCallback(() => {
@@ -23,29 +29,72 @@ const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({
     }
   }, [onAutoComplete]);
   
+  // 手動で次へ進む処理
+  const handleSkip = useCallback(() => {
+    console.log('ユーザーがスキップボタンをクリックしました');
+    // タイマーをクリア
+    if (autoCompleteTimeoutRef.current) {
+      clearTimeout(autoCompleteTimeoutRef.current);
+      autoCompleteTimeoutRef.current = null;
+    }
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    if (forceTimeoutRef.current) {
+      clearTimeout(forceTimeoutRef.current);
+      forceTimeoutRef.current = null;
+    }
+    
+    handleAutoComplete();
+  }, [handleAutoComplete]);
+  
+  // 絶対に実行されるべき強制タイマー
+  useEffect(() => {
+    // 長めのデッドライン - このタイマーは絶対に発火する
+    const finalDeadline = 5000; // 5秒後には必ず次へ進む
+    
+    console.log(`${finalDeadline}ms後に強制的に次へ進みます`);
+    forceTimeoutRef.current = setTimeout(() => {
+      console.log('最終デッドラインに達しました。強制的に次へ進みます。');
+      handleAutoComplete();
+    }, finalDeadline);
+    
+    // スキップボタンを表示
+    const skipButtonTimeout = setTimeout(() => {
+      setShowSkipButton(true);
+    }, 2000);
+    
+    return () => {
+      clearTimeout(forceTimeoutRef.current as NodeJS.Timeout);
+      clearTimeout(skipButtonTimeout);
+    };
+  }, [handleAutoComplete]);
+  
   useEffect(() => {
     // デモモードの場合は短時間で終了する
     const intervalTime = isDemo ? 250 : 500;
     
-    const interval = setInterval(() => {
+    intervalRef.current = setInterval(() => {
       setDots(prev => prev.length >= 6 ? "." : prev + ".");
       setTimer(prev => prev + 1);
     }, intervalTime);
     
     // 自動完了のタイマー設定
-    let autoCompleteTimeout: NodeJS.Timeout | null = null;
     if (onAutoComplete) {
       // デモモードでは短く、通常モードでは長めの時間を設定
-      const timeout = autoCompleteTime || (isDemo ? 3000 : 15000);
+      const timeout = autoCompleteTime || (isDemo ? 2000 : 4000);
       console.log(`${timeout}ms後に自動的に次へ進みます (デモモード: ${isDemo})`);
       
-      autoCompleteTimeout = setTimeout(handleAutoComplete, timeout);
+      autoCompleteTimeoutRef.current = setTimeout(handleAutoComplete, timeout);
     }
     
     return () => {
-      clearInterval(interval);
-      if (autoCompleteTimeout) {
-        clearTimeout(autoCompleteTimeout);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      if (autoCompleteTimeoutRef.current) {
+        clearTimeout(autoCompleteTimeoutRef.current);
       }
     };
   }, [isDemo, autoCompleteTime, handleAutoComplete, onAutoComplete]);
@@ -86,6 +135,17 @@ const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({
           <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', fontStyle: 'italic' }}>
             デモモード: 実際のAPIは使用せず、サンプルデータを表示します
           </Typography>
+        )}
+        
+        {showSkipButton && (
+          <Button 
+            variant="text" 
+            size="small"
+            onClick={handleSkip}
+            sx={{ mt: 2 }}
+          >
+            スキップ
+          </Button>
         )}
       </Box>
     </Container>
