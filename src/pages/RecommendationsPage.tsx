@@ -26,6 +26,110 @@ const RecommendationsPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
+  // 即時ロード用のデモデータを生成する関数
+  const generateImmediateDemo = () => {
+    console.log('即時表示用のデモデータを生成');
+    
+    const demoFrame = {
+      id: 1,
+      name: "クラシックラウンド",
+      brand: "Zoff",
+      price: 15000,
+      style: "クラシック",
+      shape: "ラウンド",
+      material: "チタン",
+      color: "シルバー",
+      frame_width: 135.0,
+      lens_width: 50.0,
+      bridge_width: 20.0,
+      temple_length: 140.0,
+      lens_height: 45.0,
+      weight: 15.0,
+      recommended_face_width_min: 125.0,
+      recommended_face_width_max: 145.0,
+      recommended_nose_height_min: 35.0,
+      recommended_nose_height_max: 55.0,
+      personal_color_season: "Winter",
+      face_shape_types: ["丸型", "卵型"],
+      style_tags: ["クラシック", "ビジネス", "カジュアル"],
+      image_urls: ["/images/frames/zoff-sporty-round.jpg"],
+      created_at: "2023-01-01T00:00:00",
+      updated_at: "2023-01-01T00:00:00"
+    };
+    
+    const demoResponse: RecommendationResponse = {
+      primary_recommendation: {
+        frame: demoFrame,
+        fit_score: 90.0,
+        style_score: 85.0,
+        total_score: 87.5,
+        recommendation_reason: "このクラシックなラウンドフレームは、あなたの顔型と相性が良く、知的な印象を与えます。"
+      },
+      alternative_recommendations: [
+        {
+          frame: {
+            id: 2,
+            name: "モダンスクエア",
+            brand: "JINS",
+            price: 18000,
+            style: "モダン",
+            shape: "スクエア",
+            material: "アセテート",
+            color: "ブラック",
+            frame_width: 138.0,
+            lens_width: 52.0,
+            bridge_width: 18.0,
+            temple_length: 145.0,
+            lens_height: 42.0,
+            weight: 18.0,
+            recommended_face_width_min: 128.0,
+            recommended_face_width_max: 148.0,
+            recommended_nose_height_min: 38.0,
+            recommended_nose_height_max: 58.0,
+            personal_color_season: "Winter",
+            face_shape_types: ["楕円", "卵型"],
+            style_tags: ["モダン", "ビジネス", "デイリー"],
+            image_urls: ["/images/frames/jins-classic-square.jpg"],
+            created_at: "2023-01-01T00:00:00",
+            updated_at: "2023-01-01T00:00:00"
+          },
+          fit_score: 80.0,
+          style_score: 85.0,
+          total_score: 82.0,
+          recommendation_reason: "このモダンなスクエアフレームは、あなたの顔立ちに知的な印象を加えます。"
+        }
+      ],
+      face_analysis: {
+        face_shape: "楕円顔",
+        style_category: "クラシック",
+        demo_mode: true
+      },
+      recommendation_details: {
+        fit_explanation: "あなたの楕円形の顔には、このクラシックなラウンドフレームが調和します。顔の輪郭を引き立て、自然な印象を与えます。",
+        style_explanation: "クラシックで知的な印象を与えるデザインです。様々なシーンで活躍します。",
+        feature_highlights: ["軽量チタン素材", "クラシックデザイン", "調整可能なノーズパッド"]
+      }
+    };
+    
+    return demoResponse;
+  };
+  
+  // 即時表示専用のデモデータを設定（最初のレンダリング時のみ）
+  useEffect(() => {
+    // デモモードが有効な場合、即座にデモデータを表示
+    if (import.meta.env.VITE_DEMO_MODE === 'true') {
+      console.log('即時表示用デモデータをロード中...');
+      const demoData = generateImmediateDemo();
+      setRecommendations(demoData);
+      
+      // 短いタイマーで自動的にローディングを終了
+      setTimeout(() => {
+        setLoading(false);
+        console.log('デモデータの表示が完了しました');
+      }, 2000);
+    }
+  }, []);
+  
   // URLクエリパラメータまたはlocation stateから顔測定データを取得　
   const getFaceMeasurementData = (): FaceData => {
     try {
@@ -84,7 +188,17 @@ const RecommendationsPage: React.FC = () => {
     
     const fetchRecommendations = async () => {
       try {
-        setLoading(true);
+        // デモモードが有効かつすでに推薦データがある場合は処理をスキップ
+        if (demoMode && recommendations) {
+          console.log('デモモードですでに推薦データが存在するため、API呼び出しをスキップします');
+          setLoading(false);
+          return;
+        }
+        
+        // 通常はローディング状態を維持
+        if (!demoMode) {
+          setLoading(true);
+        }
         setError(null);
         
         // APIリクエストタイムアウト用の変数
@@ -195,7 +309,7 @@ const RecommendationsPage: React.FC = () => {
     };
     
     fetchRecommendations();
-  }, [location]);
+  }, [location, recommendations]);
   
   // 主要な推薦フレームが変更されたときにAI説明を生成
   useEffect(() => {
@@ -267,9 +381,17 @@ const RecommendationsPage: React.FC = () => {
   
   const renderContent = () => {
     if (loading) {
+      // 非常に短い時間でプログレスバーを表示
+      setTimeout(() => {
+        if (recommendations) {
+          setLoading(false);
+          console.log('強制的にローディングを終了しました');
+        }
+      }, 1500);
+      
       return <AnalyzingScreen 
         isDemo={isDemo} 
-        autoCompleteTime={isDemo ? 3000 : 10000}
+        autoCompleteTime={isDemo ? 1000 : 3000}
         onAutoComplete={() => {
           console.log('AnalyzingScreenからの自動完了を検出');
           // 強制的にロード完了状態に設定
@@ -317,6 +439,12 @@ const RecommendationsPage: React.FC = () => {
     }
     
     if (!recommendations) {
+      // 推薦がない場合は即座にデモデータを生成して表示
+      if (isDemo) {
+        const demoData = generateImmediateDemo();
+        setRecommendations(demoData);
+      }
+      
       return (
         <Box sx={{ my: 4, textAlign: 'center' }}>
           <CircularProgress />
