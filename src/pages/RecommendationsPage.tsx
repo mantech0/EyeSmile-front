@@ -87,6 +87,40 @@ const RecommendationsPage: React.FC = () => {
         setLoading(true);
         setError(null);
         
+        // APIリクエストタイムアウト用の変数
+        let timeoutId: NodeJS.Timeout | null = null;
+        
+        // 強制タイムアウト処理
+        const forceTimeout = () => {
+          console.log('API呼び出しがタイムアウトしました。デモモードに切り替えます。');
+          setIsDemo(true);
+          
+          // デモデータを強制的に取得
+          const faceData = getFaceMeasurementData();
+          const stylePreference: StylePreference = {
+            personal_color: "冬",
+            preferred_styles: ["クラシック", "ビジネス"],
+            preferred_shapes: ["ラウンド", "スクエア"],
+            preferred_materials: ["チタン"],
+            preferred_colors: ["ブラック", "シルバー"]
+          };
+          
+          getGlassesRecommendations(faceData, stylePreference)
+            .then(demoData => {
+              console.log('タイムアウトによりデモデータを表示します:', demoData);
+              setRecommendations(demoData);
+              setLoading(false);
+            })
+            .catch(err => {
+              console.error('デモデータ取得エラー:', err);
+              setError('データの読み込みに失敗しました。ページをリロードしてください。');
+              setLoading(false);
+            });
+        };
+        
+        // タイムアウトを設定（デモモードでは短く、通常モードでは長めに）
+        timeoutId = setTimeout(forceTimeout, demoMode ? 5000 : 15000);
+        
         // MediaPipeのロード状態をチェック（デモモードでなければ）
         if (!demoMode) {
           try {
@@ -123,6 +157,12 @@ const RecommendationsPage: React.FC = () => {
           faceData,
           stylePreference
         );
+        
+        // タイムアウトをクリア
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
         
         console.log("レコメンデーション取得完了:", recommendationData);
         
@@ -227,7 +267,40 @@ const RecommendationsPage: React.FC = () => {
   
   const renderContent = () => {
     if (loading) {
-      return <AnalyzingScreen isDemo={isDemo} />;
+      return <AnalyzingScreen 
+        isDemo={isDemo} 
+        autoCompleteTime={isDemo ? 3000 : 10000}
+        onAutoComplete={() => {
+          console.log('AnalyzingScreenからの自動完了を検出');
+          // 強制的にロード完了状態に設定
+          if (recommendations) {
+            setLoading(false);
+          } else if (isDemo) {
+            // デモモードで推薦がまだない場合は強制的に取得を再試行
+            console.log('デモデータを強制的に取得します');
+            const faceData = getFaceMeasurementData();
+            const stylePreference: StylePreference = {
+              personal_color: "冬",
+              preferred_styles: ["クラシック", "ビジネス"],
+              preferred_shapes: ["ラウンド", "スクエア"],
+              preferred_materials: ["チタン"],
+              preferred_colors: ["ブラック", "シルバー"]
+            };
+            
+            // デモ推薦を取得
+            getGlassesRecommendations(faceData, stylePreference)
+              .then(data => {
+                setRecommendations(data);
+                setLoading(false);
+              })
+              .catch(err => {
+                console.error('強制デモデータ取得エラー:', err);
+                setError('推薦データの取得に失敗しました。ページを再読み込みしてください。');
+                setLoading(false);
+              });
+          }
+        }}
+      />;
     }
     
     if (error) {

@@ -1,13 +1,27 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Typography, Container, CircularProgress } from '@mui/material';
 
 interface AnalyzingScreenProps {
   isDemo?: boolean;
+  autoCompleteTime?: number; // ミリ秒
+  onAutoComplete?: () => void; // 自動完了時のコールバック
 }
 
-const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({ isDemo = false }) => {
+const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({ 
+  isDemo = false,
+  autoCompleteTime,
+  onAutoComplete
+}) => {
   const [dots, setDots] = useState("......");
   const [timer, setTimer] = useState(0);
+  
+  // 自動完了処理
+  const handleAutoComplete = useCallback(() => {
+    if (onAutoComplete) {
+      console.log('解析処理タイムアウト - 自動的に次へ進みます');
+      onAutoComplete();
+    }
+  }, [onAutoComplete]);
   
   useEffect(() => {
     // デモモードの場合は短時間で終了する
@@ -18,8 +32,23 @@ const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({ isDemo = false }) => 
       setTimer(prev => prev + 1);
     }, intervalTime);
     
-    return () => clearInterval(interval);
-  }, [isDemo]);
+    // 自動完了のタイマー設定
+    let autoCompleteTimeout: NodeJS.Timeout | null = null;
+    if (onAutoComplete) {
+      // デモモードでは短く、通常モードでは長めの時間を設定
+      const timeout = autoCompleteTime || (isDemo ? 3000 : 15000);
+      console.log(`${timeout}ms後に自動的に次へ進みます (デモモード: ${isDemo})`);
+      
+      autoCompleteTimeout = setTimeout(handleAutoComplete, timeout);
+    }
+    
+    return () => {
+      clearInterval(interval);
+      if (autoCompleteTimeout) {
+        clearTimeout(autoCompleteTimeout);
+      }
+    };
+  }, [isDemo, autoCompleteTime, handleAutoComplete, onAutoComplete]);
   
   return (
     <Container maxWidth="sm" sx={{ my: 4, py: 4, textAlign: 'center', height: '80vh', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
