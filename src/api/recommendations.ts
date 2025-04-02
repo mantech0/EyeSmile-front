@@ -119,6 +119,15 @@ export const getGlassesRecommendations = async (
   faceData: FaceData,
   stylePreference?: StylePreference
 ): Promise<RecommendationResponse> => {
+  // デモモードチェック - 環境変数からデモモードが有効かどうかを確認
+  const isDemo = import.meta.env.VITE_DEMO_MODE === 'true';
+  console.log('デモモード設定:', isDemo);
+  
+  if (isDemo) {
+    console.log('デモモードでの実行 - APIをスキップしてデモデータを使用します');
+    return generateDemoRecommendation(faceData, stylePreference);
+  }
+  
   try {
     console.log('メガネ推薦APIを呼び出します', { faceData, stylePreference });
     
@@ -134,164 +143,182 @@ export const getGlassesRecommendations = async (
         headers: {
           'Content-Type': 'application/json',
         },
-        timeout: 10000 // 10秒のタイムアウト
+        timeout: 30000 // 30秒のタイムアウト（延長）
       }
     );
     
     console.log('メガネ推薦APIレスポンス:', response.data);
     return response.data;
-  } catch (error) {
+  } catch (error: any) {
     console.error('メガネ推薦APIエラー:', error);
+    console.error('エラーの詳細:', error.message);
     
-    try {
-      // APIが失敗した場合、フレーム一覧から推薦を生成する
-      console.log('フレーム一覧から代替推薦を生成します');
-      
-      // フレーム一覧を取得
-      const frames = await getAllFrames();
-      
-      if (frames && frames.length > 0) {
-        // フレームデータから推薦レスポンスを生成
-        const primaryFrame = frames[Math.floor(Math.random() * 5)]; // 最初の数フレームからランダムに選択
-        
-        // 代替推薦用に異なるフレームを4つ選択
-        const alternativeFrames = [];
-        const usedIndexes = new Set<number>();
-        const primaryIndex = frames.findIndex(f => f.id === primaryFrame.id);
-        usedIndexes.add(primaryIndex);
-        
-        while (alternativeFrames.length < 4 && usedIndexes.size < frames.length) {
-          const randomIndex = Math.floor(Math.random() * frames.length);
-          if (!usedIndexes.has(randomIndex)) {
-            usedIndexes.add(randomIndex);
-            alternativeFrames.push(frames[randomIndex]);
-          }
-        }
-        
-        // 推薦レスポンスの構築
-        const response: RecommendationResponse = {
-          primary_recommendation: {
-            frame: primaryFrame,
-            fit_score: 85.0,
-            style_score: 90.0,
-            total_score: 87.0,
-            recommendation_reason: `${primaryFrame.brand}の${primaryFrame.name}は、あなたの顔の形状と好みのスタイルに適しています。`
-          },
-          alternative_recommendations: alternativeFrames.map(frame => ({
-            frame,
-            fit_score: 70 + Math.random() * 20,
-            style_score: 70 + Math.random() * 20,
-            total_score: 70 + Math.random() * 20,
-            recommendation_reason: `${frame.brand}の${frame.name}も良い選択肢です。`
-          })),
-          face_analysis: {
-            face_shape: faceData.face_width > 135 ? "丸型" : "楕円型",
-            style_category: stylePreference?.preferred_styles?.[0] || "クラシック",
-            demo_mode: true
-          },
-          recommendation_details: {
-            fit_explanation: `あなたの顔幅(${faceData.face_width}mm)に合わせた最適なフレームを選びました。`,
-            style_explanation: stylePreference?.preferred_styles ? 
-              `あなたのお好みの${stylePreference.preferred_styles.join('・')}スタイルに合うフレームです。` : 
-              "あなたの個性を引き立てるスタイリッシュなフレームです。",
-            feature_highlights: [
-              `${primaryFrame.material}素材`,
-              `${primaryFrame.shape}シェイプ`,
-              `${primaryFrame.color}カラー`
-            ]
-          }
-        };
-        
-        console.log('フレーム一覧から生成した推薦データ:', response);
-        return response;
-      }
-    } catch (fallbackError) {
-      console.error('代替推薦生成エラー:', fallbackError);
+    if (error.response) {
+      // サーバーからのレスポンスがあったがエラーステータスだった場合
+      console.error('サーバーエラー詳細:', error.response.status, error.response.data);
+    } else if (error.request) {
+      // リクエストは成功したがレスポンスがない場合
+      console.error('レスポンスなし (タイムアウトなど):', error.request);
     }
     
-    // 最終フォールバック: ハードコードされたデモデータ
-    const demoResponse: RecommendationResponse = {
-      primary_recommendation: {
+    // フォールバック処理 - デモデータを生成
+    return generateDemoRecommendation(faceData, stylePreference);
+  }
+};
+
+// デモ推薦データ生成用の関数（コード重複を減らすため分離）
+const generateDemoRecommendation = async (
+  faceData: FaceData,
+  stylePreference?: StylePreference
+): Promise<RecommendationResponse> => {
+  try {
+    // APIが失敗した場合、フレーム一覧から推薦を生成する
+    console.log('フレーム一覧から代替推薦を生成します');
+    
+    // フレーム一覧を取得
+    const frames = await getAllFrames();
+    
+    if (frames && frames.length > 0) {
+      // フレームデータから推薦レスポンスを生成
+      const primaryFrame = frames[Math.floor(Math.random() * 5)]; // 最初の数フレームからランダムに選択
+      
+      // 代替推薦用に異なるフレームを4つ選択
+      const alternativeFrames = [];
+      const usedIndexes = new Set<number>();
+      const primaryIndex = frames.findIndex(f => f.id === primaryFrame.id);
+      usedIndexes.add(primaryIndex);
+      
+      while (alternativeFrames.length < 4 && usedIndexes.size < frames.length) {
+        const randomIndex = Math.floor(Math.random() * frames.length);
+        if (!usedIndexes.has(randomIndex)) {
+          usedIndexes.add(randomIndex);
+          alternativeFrames.push(frames[randomIndex]);
+        }
+      }
+      
+      // 推薦レスポンスの構築
+      const response: RecommendationResponse = {
+        primary_recommendation: {
+          frame: primaryFrame,
+          fit_score: 85.0,
+          style_score: 90.0,
+          total_score: 87.0,
+          recommendation_reason: `${primaryFrame.brand}の${primaryFrame.name}は、あなたの顔の形状と好みのスタイルに適しています。`
+        },
+        alternative_recommendations: alternativeFrames.map(frame => ({
+          frame,
+          fit_score: 70 + Math.random() * 20,
+          style_score: 70 + Math.random() * 20,
+          total_score: 70 + Math.random() * 20,
+          recommendation_reason: `${frame.brand}の${frame.name}も良い選択肢です。`
+        })),
+        face_analysis: {
+          face_shape: faceData.face_width > 135 ? "丸型" : "楕円型",
+          style_category: stylePreference?.preferred_styles?.[0] || "クラシック",
+          demo_mode: true
+        },
+        recommendation_details: {
+          fit_explanation: `あなたの顔幅(${faceData.face_width}mm)に合わせた最適なフレームを選びました。`,
+          style_explanation: stylePreference?.preferred_styles ? 
+            `あなたのお好みの${stylePreference.preferred_styles.join('・')}スタイルに合うフレームです。` : 
+            "あなたの個性を引き立てるスタイリッシュなフレームです。",
+          feature_highlights: [
+            `${primaryFrame.material}素材`,
+            `${primaryFrame.shape}シェイプ`,
+            `${primaryFrame.color}カラー`
+          ]
+        }
+      };
+      
+      console.log('フレーム一覧から生成した推薦データ:', response);
+      return response;
+    }
+  } catch (fallbackError) {
+    console.error('代替推薦生成エラー:', fallbackError);
+  }
+  
+  // 最終フォールバック: ハードコードされたデモデータ
+  const demoResponse: RecommendationResponse = {
+    primary_recommendation: {
+      frame: {
+        id: 1,
+        name: "クラシックラウンド",
+        brand: "EyeSmile",
+        price: 15000,
+        style: "クラシック",
+        shape: "ラウンド",
+        material: "チタン",
+        color: "ゴールド",
+        frame_width: 140.0,
+        lens_width: 50.0,
+        bridge_width: 20.0,
+        temple_length: 145.0,
+        lens_height: 45.0,
+        weight: 15.0,
+        recommended_face_width_min: 130.0,
+        recommended_face_width_max: 150.0,
+        recommended_nose_height_min: 40.0,
+        recommended_nose_height_max: 60.0,
+        personal_color_season: "Autumn",
+        face_shape_types: ["楕円", "卵型"],
+        style_tags: ["クラシック", "ビジネス", "カジュアル"],
+        image_urls: ["https://example.com/glasses1.jpg"],
+        created_at: "2023-01-01T00:00:00",
+        updated_at: "2023-01-01T00:00:00"
+      },
+      fit_score: 85.0,
+      style_score: 90.0,
+      total_score: 87.0,
+      recommendation_reason: "このフレームはあなたの顔の形状に適しており、クラシックスタイルを引き立てます。"
+    },
+    alternative_recommendations: [
+      {
         frame: {
-          id: 1,
-          name: "クラシックラウンド",
+          id: 2,
+          name: "モダンスクエア",
           brand: "EyeSmile",
-          price: 15000,
-          style: "クラシック",
-          shape: "ラウンド",
-          material: "チタン",
-          color: "ゴールド",
-          frame_width: 140.0,
-          lens_width: 50.0,
-          bridge_width: 20.0,
+          price: 18000,
+          style: "モダン",
+          shape: "スクエア",
+          material: "アセテート",
+          color: "ブラック",
+          frame_width: 138.0,
+          lens_width: 52.0,
+          bridge_width: 18.0,
           temple_length: 145.0,
-          lens_height: 45.0,
-          weight: 15.0,
-          recommended_face_width_min: 130.0,
-          recommended_face_width_max: 150.0,
-          recommended_nose_height_min: 40.0,
-          recommended_nose_height_max: 60.0,
-          personal_color_season: "Autumn",
+          lens_height: 42.0,
+          weight: 18.0,
+          recommended_face_width_min: 128.0,
+          recommended_face_width_max: 148.0,
+          recommended_nose_height_min: 38.0,
+          recommended_nose_height_max: 58.0,
+          personal_color_season: "Winter",
           face_shape_types: ["楕円", "卵型"],
-          style_tags: ["クラシック", "ビジネス", "カジュアル"],
-          image_urls: ["https://example.com/glasses1.jpg"],
+          style_tags: ["モダン", "ビジネス", "デイリー"],
+          image_urls: ["https://example.com/glasses2.jpg"],
           created_at: "2023-01-01T00:00:00",
           updated_at: "2023-01-01T00:00:00"
         },
-        fit_score: 85.0,
-        style_score: 90.0,
-        total_score: 87.0,
-        recommendation_reason: "このフレームはあなたの顔の形状に適しており、クラシックスタイルを引き立てます。"
-      },
-      alternative_recommendations: [
-        {
-          frame: {
-            id: 2,
-            name: "モダンスクエア",
-            brand: "EyeSmile",
-            price: 18000,
-            style: "モダン",
-            shape: "スクエア",
-            material: "アセテート",
-            color: "ブラック",
-            frame_width: 138.0,
-            lens_width: 52.0,
-            bridge_width: 18.0,
-            temple_length: 145.0,
-            lens_height: 42.0,
-            weight: 18.0,
-            recommended_face_width_min: 128.0,
-            recommended_face_width_max: 148.0,
-            recommended_nose_height_min: 38.0,
-            recommended_nose_height_max: 58.0,
-            personal_color_season: "Winter",
-            face_shape_types: ["楕円", "卵型"],
-            style_tags: ["モダン", "ビジネス", "デイリー"],
-            image_urls: ["https://example.com/glasses2.jpg"],
-            created_at: "2023-01-01T00:00:00",
-            updated_at: "2023-01-01T00:00:00"
-          },
-          fit_score: 80.0,
-          style_score: 85.0,
-          total_score: 82.0,
-          recommendation_reason: "このモダンなスクエアフレームは、あなたの顔立ちに知的な印象を加えます。"
-        }
-      ],
-      face_analysis: {
-        face_shape: "楕円顔",
-        style_category: "クラシック",
-        demo_mode: true
-      },
-      recommendation_details: {
-        fit_explanation: "あなたの楕円形の顔には、このクラシックなラウンドフレームが調和します。顔の輪郭を引き立て、自然な印象を与えます。",
-        style_explanation: "クラシックで知的な印象を与えるデザインです。様々なシーンで活躍します。",
-        feature_highlights: ["軽量チタン素材", "クラシックデザイン", "調整可能なノーズパッド"]
+        fit_score: 80.0,
+        style_score: 85.0,
+        total_score: 82.0,
+        recommendation_reason: "このモダンなスクエアフレームは、あなたの顔立ちに知的な印象を加えます。"
       }
-    };
-    
-    console.log('デモモードでの推薦データを使用します');
-    return demoResponse;
-  }
+    ],
+    face_analysis: {
+      face_shape: "楕円顔",
+      style_category: "クラシック",
+      demo_mode: true
+    },
+    recommendation_details: {
+      fit_explanation: "あなたの楕円形の顔には、このクラシックなラウンドフレームが調和します。顔の輪郭を引き立て、自然な印象を与えます。",
+      style_explanation: "クラシックで知的な印象を与えるデザインです。様々なシーンで活躍します。",
+      feature_highlights: ["軽量チタン素材", "クラシックデザイン", "調整可能なノーズパッド"]
+    }
+  };
+  
+  console.log('ハードコードされたデモデータを使用します');
+  return demoResponse;
 };
 
 /**
@@ -302,7 +329,16 @@ export const generateAIExplanation = async (
   faceData: FaceData,
   stylePreference?: StylePreference
 ): Promise<AIExplanationResponse> => {
+  // デモモードチェック
+  const isDemo = import.meta.env.VITE_DEMO_MODE === 'true';
+  
+  if (isDemo) {
+    console.log('デモモードでAI説明を生成します');
+    return generateDemoAIExplanation(frameData, faceData, stylePreference);
+  }
+  
   try {
+    console.log('AI説明生成APIを呼び出します', { frameData, faceData, stylePreference });
     const url = `${API_BASE_URL}/api/v1/ai-explanation/generate`;
     const response = await fetch(url, {
       method: 'POST',
@@ -321,23 +357,37 @@ export const generateAIExplanation = async (
     }
 
     const data = await response.json();
+    console.log('AI説明生成APIレスポンス:', data);
     return data;
   } catch (error) {
     console.error('AIによる説明生成中にエラーが発生しました:', error);
-    // エラー時はデフォルトの説明を返す
-    return {
-      status: 'error',
-      explanation: {
-        fit_explanation: `${frameData.shape}型のフレームはあなたの顔幅(${faceData.face_width}mm)に適しています。レンズ幅${frameData.lens_width}mmのサイズ感が、顔全体のバランスを整えます。`,
-        style_explanation: `${frameData.brand}の${frameData.style}スタイルは、あなたの好みに合わせた洗練されたデザインです。${frameData.material}素材と${frameData.color}カラーの組み合わせが、あなたの個性を引き立てます。`,
-        feature_highlights: [
-          "鼻あての高さが調整可能で、フィット感を向上",
-          "軽量設計で長時間の着用でも快適",
-          "耐久性に優れたヒンジで長期使用が可能",
-          "レンズのゆがみが少なく視界が鮮明",
-          "テンプルの弾力性が調度良く、圧迫感が少ない"
-        ]
-      }
-    };
+    // エラー時はデモの説明を返す
+    return generateDemoAIExplanation(frameData, faceData, stylePreference);
   }
+};
+
+/**
+ * デモ用のAI説明を生成する
+ */
+const generateDemoAIExplanation = (
+  frameData: FrameDetail,
+  faceData: FaceData,
+  stylePreference?: StylePreference
+): AIExplanationResponse => {
+  console.log('デモ用のAI説明を生成します', { frameData, faceData, stylePreference });
+  
+  return {
+    status: 'success',
+    explanation: {
+      fit_explanation: `${frameData.shape}型のフレームはあなたの顔幅(${faceData.face_width}mm)に適しています。レンズ幅${frameData.lens_width}mmのサイズ感が、顔全体のバランスを整えます。ブリッジ幅${frameData.bridge_width}mmが鼻に自然にフィットし、長時間の着用でも快適です。`,
+      style_explanation: `${frameData.brand}の${frameData.style}スタイルは、あなたの好みに合わせた洗練されたデザインです。${frameData.material}素材と${frameData.color}カラーの組み合わせが、あなたの個性を引き立てます。日常使いからビジネスシーンまで幅広く活躍します。`,
+      feature_highlights: [
+        `高品質な${frameData.material}素材を使用し、軽量かつ耐久性に優れています`,
+        `${frameData.shape}シェイプが顔の輪郭とバランスよく調和します`,
+        `${frameData.color}カラーが肌の色味を引き立てます`,
+        "鼻あての高さが調整可能で、フィット感を向上",
+        "レンズのゆがみが少なく視界が鮮明"
+      ]
+    }
+  };
 }; 
