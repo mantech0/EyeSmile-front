@@ -21,6 +21,7 @@ const RecommendationsPage: React.FC = () => {
   const [recommendations, setRecommendations] = useState<RecommendationResponse | null>(null);
   const [availableFrames, setAvailableFrames] = useState<number>(0);
   const [generatingAIExplanation, setGeneratingAIExplanation] = useState(false);
+  const [isDemo, setIsDemo] = useState<boolean>(import.meta.env.VITE_DEMO_MODE === 'true');
   
   const navigate = useNavigate();
   const location = useLocation();
@@ -76,21 +77,37 @@ const RecommendationsPage: React.FC = () => {
   }, []);
   
   useEffect(() => {
+    // デモモードを先に検出して設定
+    const demoMode = import.meta.env.VITE_DEMO_MODE === 'true';
+    setIsDemo(demoMode);
+    console.log('デモモード設定:', demoMode);
+    
     const fetchRecommendations = async () => {
       try {
         setLoading(true);
         setError(null);
         
-        // デモモードをチェック
-        const isDemo = import.meta.env.VITE_DEMO_MODE === 'true';
-        console.log('デモモード設定:', isDemo);
+        // MediaPipeのロード状態をチェック（デモモードでなければ）
+        if (!demoMode) {
+          try {
+            // MediaPipe関連のグローバル変数が存在しない場合はエラーとして処理
+            if (!window.FaceMesh || !window.Camera || !window.drawConnectors) {
+              console.warn('MediaPipeライブラリがロードされていないため、デモモードに切り替えます');
+              // 明示的にデモモードに切り替え
+              setIsDemo(true);
+            }
+          } catch (mpError) {
+            console.error('MediaPipe検証エラー:', mpError);
+            // MediaPipe関連のエラーが発生した場合もデモモードに切り替え
+            setIsDemo(true);
+          }
+        }
         
         // 顔データの取得
         const faceData = getFaceMeasurementData();
         console.log('使用する顔測定データ:', faceData);
         
         // スタイル設定
-        // 実際のアプリではユーザーの回答から生成することもできます
         const stylePreference: StylePreference = {
           personal_color: "冬",
           preferred_styles: ["クラシック", "ビジネス"],
@@ -111,15 +128,29 @@ const RecommendationsPage: React.FC = () => {
         
         if (recommendationData) {
           setRecommendations(recommendationData);
+          // デモモードの場合は処理を即時完了
           setLoading(false);
           console.log("データ設定完了。ローディング終了。");
         } else {
           throw new Error('レコメンデーションデータが空です');
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('レコメンデーション取得エラー:', error);
-        setError('レコメンデーションの取得中にエラーが発生しました。もう一度お試しください。');
+        const errorMessage = error.message || 'レコメンデーションの取得中にエラーが発生しました。';
+        setError(`${errorMessage} もう一度お試しください。`);
         setLoading(false);
+        
+        // エラーが発生した場合、デモモードに切り替え
+        if (!isDemo) {
+          console.log('エラーが発生したため、デモモードに切り替えます');
+          setIsDemo(true);
+          // 少し待ってから再試行
+          setTimeout(() => {
+            setError(null);
+            setLoading(true);
+            fetchRecommendations();
+          }, 1500);
+        }
       }
     };
     
@@ -196,7 +227,7 @@ const RecommendationsPage: React.FC = () => {
   
   const renderContent = () => {
     if (loading) {
-      return <AnalyzingScreen />;
+      return <AnalyzingScreen isDemo={isDemo} />;
     }
     
     if (error) {

@@ -172,67 +172,73 @@ const generateDemoRecommendation = async (
   stylePreference?: StylePreference
 ): Promise<RecommendationResponse> => {
   try {
-    // APIが失敗した場合、フレーム一覧から推薦を生成する
-    console.log('フレーム一覧から代替推薦を生成します');
+    console.log('デモモードでの推薦を生成します - 非同期処理をスキップ');
     
-    // フレーム一覧を取得
-    const frames = await getAllFrames();
-    
-    if (frames && frames.length > 0) {
-      // フレームデータから推薦レスポンスを生成
-      const primaryFrame = frames[Math.floor(Math.random() * 5)]; // 最初の数フレームからランダムに選択
+    // フレーム一覧の取得を試みるが、エラーの場合はハードコードされたデータを使用
+    try {
+      // フレーム一覧を取得
+      const frames = await getAllFrames();
       
-      // 代替推薦用に異なるフレームを4つ選択
-      const alternativeFrames = [];
-      const usedIndexes = new Set<number>();
-      const primaryIndex = frames.findIndex(f => f.id === primaryFrame.id);
-      usedIndexes.add(primaryIndex);
-      
-      while (alternativeFrames.length < 4 && usedIndexes.size < frames.length) {
-        const randomIndex = Math.floor(Math.random() * frames.length);
-        if (!usedIndexes.has(randomIndex)) {
-          usedIndexes.add(randomIndex);
-          alternativeFrames.push(frames[randomIndex]);
+      if (frames && frames.length > 0) {
+        // フレームデータから推薦レスポンスを生成
+        const primaryFrame = frames[Math.floor(Math.random() * 5)]; // 最初の数フレームからランダムに選択
+        
+        // 代替推薦用に異なるフレームを4つ選択
+        const alternativeFrames = [];
+        const usedIndexes = new Set<number>();
+        const primaryIndex = frames.findIndex(f => f.id === primaryFrame.id);
+        usedIndexes.add(primaryIndex);
+        
+        while (alternativeFrames.length < 4 && usedIndexes.size < frames.length) {
+          const randomIndex = Math.floor(Math.random() * frames.length);
+          if (!usedIndexes.has(randomIndex)) {
+            usedIndexes.add(randomIndex);
+            alternativeFrames.push(frames[randomIndex]);
+          }
         }
+        
+        // 推薦レスポンスの構築
+        const response: RecommendationResponse = {
+          primary_recommendation: {
+            frame: primaryFrame,
+            fit_score: 85.0,
+            style_score: 90.0,
+            total_score: 87.0,
+            recommendation_reason: `${primaryFrame.brand}の${primaryFrame.name}は、あなたの顔の形状と好みのスタイルに適しています。`
+          },
+          alternative_recommendations: alternativeFrames.map(frame => ({
+            frame,
+            fit_score: 70 + Math.random() * 20,
+            style_score: 70 + Math.random() * 20,
+            total_score: 70 + Math.random() * 20,
+            recommendation_reason: `${frame.brand}の${frame.name}も良い選択肢です。`
+          })),
+          face_analysis: {
+            face_shape: faceData.face_width > 135 ? "丸型" : "楕円型",
+            style_category: stylePreference?.preferred_styles?.[0] || "クラシック",
+            demo_mode: true
+          },
+          recommendation_details: {
+            fit_explanation: `あなたの顔幅(${faceData.face_width}mm)に合わせた最適なフレームを選びました。`,
+            style_explanation: stylePreference?.preferred_styles ? 
+              `あなたのお好みの${stylePreference.preferred_styles.join('・')}スタイルに合うフレームです。` : 
+              "あなたの個性を引き立てるスタイリッシュなフレームです。",
+            feature_highlights: [
+              `${primaryFrame.material}素材`,
+              `${primaryFrame.shape}シェイプ`,
+              `${primaryFrame.color}カラー`
+            ]
+          }
+        };
+        
+        console.log('フレーム一覧から生成した推薦データ:', response);
+        return response;
       }
-      
-      // 推薦レスポンスの構築
-      const response: RecommendationResponse = {
-        primary_recommendation: {
-          frame: primaryFrame,
-          fit_score: 85.0,
-          style_score: 90.0,
-          total_score: 87.0,
-          recommendation_reason: `${primaryFrame.brand}の${primaryFrame.name}は、あなたの顔の形状と好みのスタイルに適しています。`
-        },
-        alternative_recommendations: alternativeFrames.map(frame => ({
-          frame,
-          fit_score: 70 + Math.random() * 20,
-          style_score: 70 + Math.random() * 20,
-          total_score: 70 + Math.random() * 20,
-          recommendation_reason: `${frame.brand}の${frame.name}も良い選択肢です。`
-        })),
-        face_analysis: {
-          face_shape: faceData.face_width > 135 ? "丸型" : "楕円型",
-          style_category: stylePreference?.preferred_styles?.[0] || "クラシック",
-          demo_mode: true
-        },
-        recommendation_details: {
-          fit_explanation: `あなたの顔幅(${faceData.face_width}mm)に合わせた最適なフレームを選びました。`,
-          style_explanation: stylePreference?.preferred_styles ? 
-            `あなたのお好みの${stylePreference.preferred_styles.join('・')}スタイルに合うフレームです。` : 
-            "あなたの個性を引き立てるスタイリッシュなフレームです。",
-          feature_highlights: [
-            `${primaryFrame.material}素材`,
-            `${primaryFrame.shape}シェイプ`,
-            `${primaryFrame.color}カラー`
-          ]
-        }
-      };
-      
-      console.log('フレーム一覧から生成した推薦データ:', response);
-      return response;
+    } catch (fallbackError) {
+      console.error('代替推薦生成エラー、ハードコードデータを使用します:', fallbackError);
     }
+    
+    // 以下は最終フォールバック: ハードコードされたデモデータ
   } catch (fallbackError) {
     console.error('代替推薦生成エラー:', fallbackError);
   }
@@ -243,40 +249,40 @@ const generateDemoRecommendation = async (
       frame: {
         id: 1,
         name: "クラシックラウンド",
-        brand: "EyeSmile",
+        brand: "Zoff",
         price: 15000,
         style: "クラシック",
         shape: "ラウンド",
         material: "チタン",
-        color: "ゴールド",
-        frame_width: 140.0,
+        color: "シルバー",
+        frame_width: 135.0,
         lens_width: 50.0,
         bridge_width: 20.0,
-        temple_length: 145.0,
+        temple_length: 140.0,
         lens_height: 45.0,
         weight: 15.0,
-        recommended_face_width_min: 130.0,
-        recommended_face_width_max: 150.0,
-        recommended_nose_height_min: 40.0,
-        recommended_nose_height_max: 60.0,
-        personal_color_season: "Autumn",
-        face_shape_types: ["楕円", "卵型"],
+        recommended_face_width_min: 125.0,
+        recommended_face_width_max: 145.0,
+        recommended_nose_height_min: 35.0,
+        recommended_nose_height_max: 55.0,
+        personal_color_season: "Winter",
+        face_shape_types: ["丸型", "卵型"],
         style_tags: ["クラシック", "ビジネス", "カジュアル"],
-        image_urls: ["https://example.com/glasses1.jpg"],
+        image_urls: ["/images/frames/zoff-sporty-round.jpg"],
         created_at: "2023-01-01T00:00:00",
         updated_at: "2023-01-01T00:00:00"
       },
-      fit_score: 85.0,
-      style_score: 90.0,
-      total_score: 87.0,
-      recommendation_reason: "このフレームはあなたの顔の形状に適しており、クラシックスタイルを引き立てます。"
+      fit_score: 90.0,
+      style_score: 85.0,
+      total_score: 87.5,
+      recommendation_reason: "このクラシックなラウンドフレームは、あなたの顔型と相性が良く、知的な印象を与えます。"
     },
     alternative_recommendations: [
       {
         frame: {
           id: 2,
           name: "モダンスクエア",
-          brand: "EyeSmile",
+          brand: "JINS",
           price: 18000,
           style: "モダン",
           shape: "スクエア",
@@ -295,7 +301,7 @@ const generateDemoRecommendation = async (
           personal_color_season: "Winter",
           face_shape_types: ["楕円", "卵型"],
           style_tags: ["モダン", "ビジネス", "デイリー"],
-          image_urls: ["https://example.com/glasses2.jpg"],
+          image_urls: ["/images/frames/jins-classic-square.jpg"],
           created_at: "2023-01-01T00:00:00",
           updated_at: "2023-01-01T00:00:00"
         },
