@@ -1,7 +1,19 @@
-import React from 'react';
-import { Box, Typography, Container } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { Box, Typography, Container, CircularProgress } from '@mui/material';
 
 const AnalyzingScreen: React.FC = () => {
+  const [dots, setDots] = useState("......");
+  const [timer, setTimer] = useState(0);
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDots(prev => prev.length >= 6 ? "." : prev + ".");
+      setTimer(prev => prev + 1);
+    }, 500);
+    
+    return () => clearInterval(interval);
+  }, []);
+  
   return (
     <Container maxWidth="sm" sx={{ my: 4, py: 4, textAlign: 'center', height: '80vh', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
       {/* メガネアイコン - シンプルな黒い丸メガネ */}
@@ -26,8 +38,12 @@ const AnalyzingScreen: React.FC = () => {
           margin: '0 auto'
         }}
       >
+        <CircularProgress size={30} sx={{ mb: 2 }} />
         <Typography variant="h6" align="center">
-          解析中.......
+          解析中{dots}
+        </Typography>
+        <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+          {timer}秒経過
         </Typography>
       </Box>
     </Container>

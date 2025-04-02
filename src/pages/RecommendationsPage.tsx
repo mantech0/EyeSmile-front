@@ -79,6 +79,11 @@ const RecommendationsPage: React.FC = () => {
     const fetchRecommendations = async () => {
       try {
         setLoading(true);
+        setError(null);
+        
+        // デモモードをチェック
+        const isDemo = import.meta.env.VITE_DEMO_MODE === 'true';
+        console.log('デモモード設定:', isDemo);
         
         // 顔データの取得
         const faceData = getFaceMeasurementData();
@@ -94,32 +99,25 @@ const RecommendationsPage: React.FC = () => {
           preferred_colors: ["ブラック", "シルバー"]
         };
         
+        console.log('APIを呼び出し中...', { faceData, stylePreference });
+        
         // APIからレコメンデーションを取得
-        let recommendationData: RecommendationResponse;
+        const recommendationData = await getGlassesRecommendations(
+          faceData,
+          stylePreference
+        );
         
-        try {
-          // 本番APIを呼び出し
-          recommendationData = await getGlassesRecommendations(
-            faceData,
-            stylePreference
-          );
-          console.log("API Response:", recommendationData);
-        } catch (apiError) {
-          console.error("API error:", apiError);
-          
-          // APIが失敗した場合はローカルのサンプルデータを使用
-          console.log("Falling back to sample data");
-          const response = await fetch('/sample-data/recommendations.json');
-          recommendationData = await response.json();
+        console.log("レコメンデーション取得完了:", recommendationData);
+        
+        if (recommendationData) {
+          setRecommendations(recommendationData);
+          setLoading(false);
+          console.log("データ設定完了。ローディング終了。");
+        } else {
+          throw new Error('レコメンデーションデータが空です');
         }
-        
-        // ローディング状態をシミュレート (デモ用: 本番では削除してください)
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        setRecommendations(recommendationData);
-        setLoading(false);
       } catch (error) {
-        console.error('Error fetching recommendations:', error);
+        console.error('レコメンデーション取得エラー:', error);
         setError('レコメンデーションの取得中にエラーが発生しました。もう一度お試しください。');
         setLoading(false);
       }

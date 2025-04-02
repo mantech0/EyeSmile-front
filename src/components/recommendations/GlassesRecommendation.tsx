@@ -89,9 +89,9 @@ const GlassesRecommendation: React.FC<GlassesRecommendationProps> = ({
   const getFrameImageUrl = (urls: string[] | undefined, index: number = 0): string => {
     console.log("画像URL配列:", urls);
     
-    // 開発環境ではダミー画像を使用
-    if (import.meta.env.DEV) {
-      console.log("開発環境ではローカルのダミー画像を使用します");
+    // デモモードまたは開発環境ではダミー画像を使用
+    if (import.meta.env.VITE_DEMO_MODE === 'true' || import.meta.env.DEV) {
+      console.log("デモモードまたは開発環境ではローカルのダミー画像を使用します");
       
       // ブランド名とスタイルから適切なファイル名を生成（真正面の画像を使用）
       const brandClean = frame.brand.toLowerCase().replace(/\s+/g, '-');
@@ -101,6 +101,22 @@ const GlassesRecommendation: React.FC<GlassesRecommendationProps> = ({
       // Zoffブランドの場合は既存のダミー画像を使用
       if (frame.brand.includes("Zoff")) {
         return "/images/frames/zoff-sporty-round.jpg";
+      }
+      
+      // JINS判定
+      if (frame.brand.includes("JINS")) {
+        return "/images/frames/jins-classic-round.jpg";
+      }
+      
+      // デモブランド判定
+      if (frame.brand.includes("Demo") || frame.brand.includes("デモ")) {
+        if (frame.shape.toLowerCase().includes("round")) {
+          return "/images/frames/zoff-sporty-round.jpg";
+        } else if (frame.shape.toLowerCase().includes("square")) {
+          return "/images/frames/jins-classic-square.jpg";
+        } else {
+          return "/images/frames/jins-classic-round.jpg";
+        }
       }
       
       return `/images/frames/${filename}`;
