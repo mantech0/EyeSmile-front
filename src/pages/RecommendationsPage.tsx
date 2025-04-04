@@ -187,70 +187,70 @@ const RecommendationsPage: React.FC = () => {
     console.log('デモモード設定:', demoMode);
     
     const fetchRecommendations = async () => {
-      try {
-        // デモモードが有効かつすでに推薦データがある場合は処理をスキップ
-        if (demoMode && recommendations) {
-          console.log('デモモードですでに推薦データが存在するため、API呼び出しをスキップします');
-          setLoading(false);
-          return;
-        }
+      // 既に推薦データがある場合は処理をスキップ
+      if (recommendations) {
+        console.log('既に推薦データが存在するため、API呼び出しをスキップします');
+        setLoading(false);
+        return;
+      }
+      
+      // 通常はローディング状態を維持
+      if (!demoMode) {
+        setLoading(true);
+      }
+      setError(null);
+      
+      // APIリクエストタイムアウト用の変数
+      let timeoutId: NodeJS.Timeout | null = null;
+      
+      // 強制タイムアウト処理
+      const forceTimeout = () => {
+        console.log('API呼び出しがタイムアウトしました。デモモードに切り替えます。');
+        setIsDemo(true);
         
-        // 通常はローディング状態を維持
-        if (!demoMode) {
-          setLoading(true);
-        }
-        setError(null);
-        
-        // APIリクエストタイムアウト用の変数
-        let timeoutId: NodeJS.Timeout | null = null;
-        
-        // 強制タイムアウト処理
-        const forceTimeout = () => {
-          console.log('API呼び出しがタイムアウトしました。デモモードに切り替えます。');
-          setIsDemo(true);
-          
-          // デモデータを強制的に取得
-          const faceData = getFaceMeasurementData();
-          const stylePreference: StylePreference = {
-            personal_color: "冬",
-            preferred_styles: ["クラシック", "ビジネス"],
-            preferred_shapes: ["ラウンド", "スクエア"],
-            preferred_materials: ["チタン"],
-            preferred_colors: ["ブラック", "シルバー"]
-          };
-          
-          getGlassesRecommendations(faceData, stylePreference)
-            .then(demoData => {
-              console.log('タイムアウトによりデモデータを表示します:', demoData);
-              setRecommendations(demoData);
-              setLoading(false);
-            })
-            .catch(err => {
-              console.error('デモデータ取得エラー:', err);
-              setError('データの読み込みに失敗しました。ページをリロードしてください。');
-              setLoading(false);
-            });
+        // デモデータを強制的に取得
+        const faceData = getFaceMeasurementData();
+        const stylePreference: StylePreference = {
+          personal_color: "冬",
+          preferred_styles: ["クラシック", "ビジネス"],
+          preferred_shapes: ["ラウンド", "スクエア"],
+          preferred_materials: ["チタン"],
+          preferred_colors: ["ブラック", "シルバー"]
         };
         
-        // タイムアウトを設定（デモモードでは短く、通常モードでは長めに）
-        timeoutId = setTimeout(forceTimeout, demoMode ? 5000 : 15000);
-        
-        // MediaPipeのロード状態をチェック（デモモードでなければ）
-        if (!demoMode) {
-          try {
-            // MediaPipe関連のグローバル変数が存在しない場合はエラーとして処理
-            if (!window.FaceMesh || !window.Camera || !window.drawConnectors) {
-              console.warn('MediaPipeライブラリがロードされていないため、デモモードに切り替えます');
-              // 明示的にデモモードに切り替え
-              setIsDemo(true);
-            }
-          } catch (mpError) {
-            console.error('MediaPipe検証エラー:', mpError);
-            // MediaPipe関連のエラーが発生した場合もデモモードに切り替え
+        getGlassesRecommendations(faceData, stylePreference)
+          .then(demoData => {
+            console.log('タイムアウトによりデモデータを表示します:', demoData);
+            setRecommendations(demoData);
+            setLoading(false);
+          })
+          .catch(err => {
+            console.error('デモデータ取得エラー:', err);
+            setError('データの読み込みに失敗しました。ページをリロードしてください。');
+            setLoading(false);
+          });
+      };
+      
+      // タイムアウトを設定（デモモードでは短く、通常モードでは長めに）
+      timeoutId = setTimeout(forceTimeout, demoMode ? 5000 : 15000);
+      
+      // MediaPipeのロード状態をチェック（デモモードでなければ）
+      if (!demoMode) {
+        try {
+          // MediaPipe関連のグローバル変数が存在しない場合はエラーとして処理
+          if (!window.FaceMesh || !window.Camera || !window.drawConnectors) {
+            console.warn('MediaPipeライブラリがロードされていないため、デモモードに切り替えます');
+            // 明示的にデモモードに切り替え
             setIsDemo(true);
           }
+        } catch (mpError) {
+          console.error('MediaPipe検証エラー:', mpError);
+          // MediaPipe関連のエラーが発生した場合もデモモードに切り替え
+          setIsDemo(true);
         }
-        
+      }
+      
+      try {
         // 顔データの取得
         const faceData = getFaceMeasurementData();
         console.log('使用する顔測定データ:', faceData);
@@ -298,18 +298,26 @@ const RecommendationsPage: React.FC = () => {
         if (!isDemo) {
           console.log('エラーが発生したため、デモモードに切り替えます');
           setIsDemo(true);
-          // 少し待ってから再試行
+          
+          // タイムアウトをクリア
+          if (timeoutId) {
+            clearTimeout(timeoutId);
+            timeoutId = null;
+          }
+          
+          // 少し待ってからデモデータを表示
           setTimeout(() => {
             setError(null);
-            setLoading(true);
-            fetchRecommendations();
+            const demoData = generateImmediateDemo();
+            setRecommendations(demoData);
+            setLoading(false);
           }, 1500);
         }
       }
     };
     
     fetchRecommendations();
-  }, [location, recommendations]);
+  }, [location]);
   
   // 主要な推薦フレームが変更されたときにAI説明を生成
   useEffect(() => {
