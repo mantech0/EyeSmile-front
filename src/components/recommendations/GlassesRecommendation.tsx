@@ -137,10 +137,19 @@ const GlassesRecommendation: React.FC<GlassesRecommendationProps> = ({
     } else if (url.startsWith('/')) {
       // 相対パスの場合は静的画像URLを使用
       if (STATIC_IMAGES_URL) {
-        // 静的画像URLが設定されている場合はそれを使用
-        const fullUrl = `${STATIC_IMAGES_URL}${url}`;
-        console.log("静的画像URLを使用:", fullUrl);
-        return fullUrl;
+        // 画像パスに/images/frames/を含む場合は、既に正しい形式と見なす
+        if (url.includes('/images/frames/')) {
+          // 静的画像URLと画像パスを適切に結合
+          const fullUrl = `${STATIC_IMAGES_URL}${url}`;
+          console.log("静的画像URLを使用:", fullUrl);
+          return fullUrl;
+        } else {
+          // /frames/のみを含む場合は/images/を追加
+          const path = url.startsWith('/frames/') ? `/images${url}` : url;
+          const fullUrl = `${STATIC_IMAGES_URL}${path}`;
+          console.log("静的画像URLを使用:", fullUrl);
+          return fullUrl;
+        }
       } else {
         // 静的画像URLが設定されていない場合はオリジンを使用
         const baseUrl = window.location.origin;
@@ -148,7 +157,14 @@ const GlassesRecommendation: React.FC<GlassesRecommendationProps> = ({
         return `${baseUrl}${url}`;
       }
     } else {
-      // 商品IDに基づいたプレースホルダー
+      // ファイル名のみの場合は、静的画像URLと組み合わせる
+      if (STATIC_IMAGES_URL) {
+        // 静的画像URLと画像名を結合
+        const fullUrl = `${STATIC_IMAGES_URL}/images/frames/${url}`;
+        console.log("ファイル名のみから静的画像URLを生成:", fullUrl);
+        return fullUrl;
+      }
+      // 静的画像URLが設定されていない場合はプレースホルダーを使用
       console.log("不正なURL形式のため、プレースホルダーを使用します");
       return `https://placehold.jp/4fc3f7/ffffff/400x300.png?text=${encodeURIComponent(frame.brand + ' ' + frame.name)}`;
     }
@@ -321,117 +337,150 @@ const GlassesRecommendation: React.FC<GlassesRecommendationProps> = ({
           あなたに似合うアイウェア
         </Typography>
         
-        <Card 
-          sx={{ 
-            maxWidth: isMobile ? '100%' : 380, 
-            m: 1, 
-            backgroundColor: '#f5f9ff',
-            boxShadow: 3,
-            cursor: 'pointer',
-            transition: 'all 0.3s ease',
-            '&:hover': {
-              boxShadow: 5
-            }
-          }}
-          onClick={() => onTryOn && onTryOn(selectedFrame)}
-        >
-          <CardMedia
-            component="img"
-            alt={`${frame.brand} ${frame.name}`}
-            height="240"
-            image={getFrameImageUrl(frame.image_urls)}
-            sx={{ objectFit: 'contain', p: 2 }}
-            onError={(e) => {
-              console.error(`画像の読み込みに失敗しました: ${frame.brand} ${frame.name}`, e);
-              // 画像URLが/static/images/を含んでいる場合、ローカルの画像に切り替える試み
-              const target = e.target as HTMLImageElement;
-              const currentSrc = target.src;
-              
-              if (!DEMO_MODE && currentSrc.includes('/static/images/')) {
-                try {
-                  // バックエンドの静的URLからローカルの画像パスに変換を試みる
-                  const localPath = currentSrc.split('/static/images/').pop();
-                  if (localPath) {
-                    console.log(`ローカル画像パスに変換を試みます: /images${localPath}`);
-                    target.src = `/images${localPath}`;
+        <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+          <Card 
+            sx={{ 
+              maxWidth: isMobile ? '100%' : 380, 
+              width: '100%',
+              m: 1, 
+              backgroundColor: '#f5f9ff',
+              boxShadow: 3,
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                boxShadow: 5
+              }
+            }}
+            onClick={() => onTryOn && onTryOn(selectedFrame)}
+          >
+            <CardMedia
+              component="img"
+              alt={`${frame.brand} ${frame.name}`}
+              height="240"
+              image={getFrameImageUrl(frame.image_urls)}
+              sx={{ objectFit: 'contain', p: 2, backgroundColor: '#ffffff' }}
+              onError={(e) => {
+                console.error(`画像の読み込みに失敗しました: ${frame.brand} ${frame.name}`);
+                const target = e.target as HTMLImageElement;
+                const currentSrc = target.src;
+                console.log("失敗した画像URL:", currentSrc);
+                
+                // エラー処理の試行カウント (3回まで試行)
+                const retryCount = parseInt(target.dataset.retryCount || '0', 10);
+                if (retryCount >= 3) {
+                  console.warn("最大試行回数に達しました。プレースホルダー画像を表示します。");
+                  target.src = `https://placehold.jp/4fc3f7/ffffff/400x300.png?text=${encodeURIComponent(frame.brand + ' ' + frame.name)}`;
+                  return;
+                }
+                
+                target.dataset.retryCount = (retryCount + 1).toString();
+                
+                // URLにバックエンドドメインが含まれている場合
+                if (currentSrc.includes('tech0-gen-8-step4-eyesmile-back.azurewebsites.net')) {
+                  try {
+                    // URLからパス部分を抽出
+                    const urlObj = new URL(currentSrc);
+                    const pathParts = urlObj.pathname.split('/');
+                    
+                    // パスに'frames'を含む最後の部分を取得
+                    const framePart = pathParts.findIndex(part => part === 'frames');
+                    if (framePart >= 0) {
+                      const imageName = pathParts.slice(framePart).join('/');
+                      console.log(`別のパスでリトライ: /images/${imageName}`);
+                      
+                      // まずローカルパスを試す
+                      target.src = `/images/${imageName}`;
+                      return;
+                    }
+                  } catch (err) {
+                    console.error('URL解析エラー:', err);
+                  }
+                }
+                
+                // デモモードでなければファイル名のみで再試行
+                if (!DEMO_MODE && frame.image_urls && frame.image_urls.length > 0) {
+                  const fileNameMatch = currentSrc.match(/\/([^\/]+)$/);
+                  if (fileNameMatch && fileNameMatch[1]) {
+                    const fileName = fileNameMatch[1];
+                    console.log(`ファイル名だけで再試行: ${fileName}`);
+                    target.src = `/images/frames/${fileName}`;
                     return;
                   }
-                } catch (err) {
-                  console.error('画像パスの変換に失敗しました', err);
                 }
-              }
+                
+                // すべての方法が失敗した場合、Zoffのダミー画像を使用
+                console.warn("画像の読み込みに失敗しました。ダミー画像を使用します");
+                target.src = `/images/frames/zoff-sporty-round.jpg`;
+              }}
+            />
+            
+            <CardContent sx={{ flexGrow: 1 }}>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                {frame.brand}
+              </Typography>
+              <Typography variant="h6" component="h3" gutterBottom sx={{ fontWeight: 'bold' }}>
+                {frame.name}
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 2 }}>
+                {frame.style} - {frame.shape} - {frame.material}
+              </Typography>
               
-              // 変換に失敗した場合はプレースホルダーを表示
-              target.src = `https://placehold.jp/4fc3f7/ffffff/400x300.png?text=${encodeURIComponent(frame.brand + ' ' + frame.name)}`;
-            }}
-          />
-          
-          <CardContent sx={{ flexGrow: 1 }}>
-            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-              {frame.brand}
-            </Typography>
-            <Typography variant="h6" component="h3" gutterBottom sx={{ fontWeight: 'bold' }}>
-              {frame.name}
-            </Typography>
-            <Typography variant="body2" sx={{ mb: 2 }}>
-              {frame.style} - {frame.shape} - {frame.material}
-            </Typography>
-            
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="body2" color="text.secondary">
-                {frame.frame_width}mm x {frame.lens_height}mm
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="body2" color="text.secondary">
+                  {frame.frame_width}mm x {frame.lens_height}mm
+                </Typography>
+                <Typography variant="h6" color="primary" sx={{ fontWeight: 'bold' }}>
+                  {formatPrice(frame.price)}
+                </Typography>
+              </Box>
+              
+              <Divider sx={{ mb: 2 }} />
+              
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                フィット度: {Math.round(selectedFrame.fit_score)}%
               </Typography>
-              <Typography variant="h6" color="primary" sx={{ fontWeight: 'bold' }}>
-                {formatPrice(frame.price)}
+              <LinearProgress 
+                variant="determinate" 
+                value={selectedFrame.fit_score} 
+                color="success"
+                sx={{ mb: 2, height: 6, borderRadius: 3 }}
+              />
+              
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                スタイル度: {Math.round(selectedFrame.style_score)}%
               </Typography>
-            </Box>
+              <LinearProgress 
+                variant="determinate" 
+                value={selectedFrame.style_score} 
+                color="info"
+                sx={{ height: 6, borderRadius: 3 }}
+              />
+            </CardContent>
             
-            <Divider sx={{ mb: 2 }} />
-            
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-              フィット度: {Math.round(selectedFrame.fit_score)}%
-            </Typography>
-            <LinearProgress 
-              variant="determinate" 
-              value={selectedFrame.fit_score} 
-              color="success"
-              sx={{ mb: 2, height: 6, borderRadius: 3 }}
-            />
-            
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-              スタイル度: {Math.round(selectedFrame.style_score)}%
-            </Typography>
-            <LinearProgress 
-              variant="determinate" 
-              value={selectedFrame.style_score} 
-              color="info"
-              sx={{ height: 6, borderRadius: 3 }}
-            />
-          </CardContent>
-          
-          <CardActions sx={{ p: 2, pt: 0 }}>
-            <Button 
-              variant="contained" 
-              fullWidth
-              onClick={() => onTryOn && onTryOn(selectedFrame)}
-              startIcon={<ThumbUpIcon />}
-              size="large"
-              sx={{ mr: 1 }}
-            >
-              アイウェアを試す
-            </Button>
-            
-            <Button 
-              variant="outlined"
-              fullWidth
-              onClick={() => onFeedback && onFeedback({ frameId: frame.id, rating: 4 })}
-              startIcon={<StoreIcon />}
-              size="large"
-            >
-              相談する
-            </Button>
-          </CardActions>
-        </Card>
+            <CardActions sx={{ p: 2, pt: 0 }}>
+              <Button 
+                variant="contained" 
+                fullWidth
+                onClick={() => onTryOn && onTryOn(selectedFrame)}
+                startIcon={<ThumbUpIcon />}
+                size="large"
+                sx={{ mr: 1 }}
+              >
+                アイウェアを試す
+              </Button>
+              
+              <Button 
+                variant="outlined"
+                fullWidth
+                onClick={() => onFeedback && onFeedback({ frameId: frame.id, rating: 4 })}
+                startIcon={<StoreIcon />}
+                size="large"
+              >
+                相談する
+              </Button>
+            </CardActions>
+          </Card>
+        </Box>
       </Box>
       
       {/* WHY - 推薦理由 */}
