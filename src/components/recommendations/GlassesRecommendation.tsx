@@ -22,6 +22,7 @@ import {
 import ThumbUpIcon from '@mui/icons-material/ThumbUp';
 import StoreIcon from '@mui/icons-material/Store';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import { DEMO_MODE, STATIC_IMAGES_URL } from '../../config';
 
 interface GlassesRecommendationProps {
   recommendation?: RecommendationResponse;
@@ -90,8 +91,8 @@ const GlassesRecommendation: React.FC<GlassesRecommendationProps> = ({
     console.log("画像URL配列:", urls);
     
     // デモモードまたは開発環境ではダミー画像を使用
-    if (import.meta.env.VITE_DEMO_MODE === 'true' || import.meta.env.DEV) {
-      console.log("デモモードまたは開発環境ではローカルのダミー画像を使用します");
+    if (DEMO_MODE) {
+      console.log("デモモードではローカルのダミー画像を使用します");
       
       // ブランド名とスタイルから適切なファイル名を生成（真正面の画像を使用）
       const brandClean = frame.brand.toLowerCase().replace(/\s+/g, '-');
@@ -134,10 +135,18 @@ const GlassesRecommendation: React.FC<GlassesRecommendationProps> = ({
     if (url.startsWith('http')) {
       return url;
     } else if (url.startsWith('/')) {
-      // 相対パスの場合は絶対URLに変換
-      const baseUrl = window.location.origin;
-      console.log("相対パスを絶対URLに変換:", `${baseUrl}${url}`);
-      return `${baseUrl}${url}`;
+      // 相対パスの場合は静的画像URLを使用
+      if (STATIC_IMAGES_URL) {
+        // 静的画像URLが設定されている場合はそれを使用
+        const fullUrl = `${STATIC_IMAGES_URL}${url}`;
+        console.log("静的画像URLを使用:", fullUrl);
+        return fullUrl;
+      } else {
+        // 静的画像URLが設定されていない場合はオリジンを使用
+        const baseUrl = window.location.origin;
+        console.log("相対パスを絶対URLに変換:", `${baseUrl}${url}`);
+        return `${baseUrl}${url}`;
+      }
     } else {
       // 商品IDに基づいたプレースホルダー
       console.log("不正なURL形式のため、プレースホルダーを使用します");
@@ -314,27 +323,46 @@ const GlassesRecommendation: React.FC<GlassesRecommendationProps> = ({
         
         <Card 
           sx={{ 
-            maxWidth: '600px',
-            mx: 'auto',
-            display: 'flex', 
-            flexDirection: 'column',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.1)' 
+            maxWidth: isMobile ? '100%' : 380, 
+            m: 1, 
+            backgroundColor: '#f5f9ff',
+            boxShadow: 3,
+            cursor: 'pointer',
+            transition: 'all 0.3s ease',
+            '&:hover': {
+              boxShadow: 5
+            }
           }}
+          onClick={() => onTryOn && onTryOn(selectedFrame)}
         >
           <CardMedia
             component="img"
+            alt={`${frame.brand} ${frame.name}`}
+            height="240"
             image={getFrameImageUrl(frame.image_urls)}
-            alt={frame.name}
-            sx={{ 
-              height: 300,
-              objectFit: 'contain',
-              borderBottom: '1px solid #f0f0f0',
-              background: '#fafafa'
-            }}
+            sx={{ objectFit: 'contain', p: 2 }}
             onError={(e) => {
-              console.error("画像の読み込みに失敗しました:", e);
-              // 画像が読み込めなかった場合はプレースホルダーを設定
-              (e.target as HTMLImageElement).src = `https://placehold.jp/4fc3f7/ffffff/400x300.png?text=${encodeURIComponent(frame.brand + ' ' + frame.name)}`;
+              console.error(`画像の読み込みに失敗しました: ${frame.brand} ${frame.name}`, e);
+              // 画像URLが/static/images/を含んでいる場合、ローカルの画像に切り替える試み
+              const target = e.target as HTMLImageElement;
+              const currentSrc = target.src;
+              
+              if (!DEMO_MODE && currentSrc.includes('/static/images/')) {
+                try {
+                  // バックエンドの静的URLからローカルの画像パスに変換を試みる
+                  const localPath = currentSrc.split('/static/images/').pop();
+                  if (localPath) {
+                    console.log(`ローカル画像パスに変換を試みます: /images${localPath}`);
+                    target.src = `/images${localPath}`;
+                    return;
+                  }
+                } catch (err) {
+                  console.error('画像パスの変換に失敗しました', err);
+                }
+              }
+              
+              // 変換に失敗した場合はプレースホルダーを表示
+              target.src = `https://placehold.jp/4fc3f7/ffffff/400x300.png?text=${encodeURIComponent(frame.brand + ' ' + frame.name)}`;
             }}
           />
           
