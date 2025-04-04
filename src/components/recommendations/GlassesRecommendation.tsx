@@ -88,86 +88,8 @@ const GlassesRecommendation: React.FC<GlassesRecommendationProps> = ({
   
   // 商品画像のURLをチェックして適切な画像を表示する
   const getFrameImageUrl = (urls: string[] | undefined, index: number = 0): string => {
-    console.log("画像URL配列:", urls);
-    
-    // デモモードまたは開発環境ではダミー画像を使用
-    if (DEMO_MODE) {
-      console.log("デモモードではローカルのダミー画像を使用します");
-      
-      // ブランド名とスタイルから適切なファイル名を生成（真正面の画像を使用）
-      const brandClean = frame.brand.toLowerCase().replace(/\s+/g, '-');
-      const styleClean = frame.style.toLowerCase().replace(/\s+/g, '-');
-      const filename = `${brandClean}-${styleClean}.jpg`;
-      
-      // Zoffブランドの場合は既存のダミー画像を使用
-      if (frame.brand.includes("Zoff")) {
-        return "/images/frames/zoff-sporty-round.jpg";
-      }
-      
-      // JINS判定
-      if (frame.brand.includes("JINS")) {
-        return "/images/frames/jins-classic-round.jpg";
-      }
-      
-      // デモブランド判定
-      if (frame.brand.includes("Demo") || frame.brand.includes("デモ")) {
-        if (frame.shape.toLowerCase().includes("round")) {
-          return "/images/frames/zoff-sporty-round.jpg";
-        } else if (frame.shape.toLowerCase().includes("square")) {
-          return "/images/frames/jins-classic-square.jpg";
-        } else {
-          return "/images/frames/jins-classic-round.jpg";
-        }
-      }
-      
-      return `/images/frames/${filename}`;
-    }
-    
-    if (!urls || urls.length === 0) {
-      // デフォルトのプレースホルダー画像
-      console.log("URLが見つからないため、デフォルト画像を使用します");
-      return `https://placehold.jp/4fc3f7/ffffff/400x300.png?text=${encodeURIComponent(frame.brand + ' ' + frame.name)}`;
-    }
-    
-    const url = urls[index];
-    console.log("選択された画像URL:", url);
-    
-    if (url.startsWith('http')) {
-      return url;
-    } else if (url.startsWith('/')) {
-      // 相対パスの場合は静的画像URLを使用
-      if (STATIC_IMAGES_URL) {
-        // 画像パスに/images/frames/を含む場合は、既に正しい形式と見なす
-        if (url.includes('/images/frames/')) {
-          // 静的画像URLと画像パスを適切に結合
-          const fullUrl = `${STATIC_IMAGES_URL}${url}`;
-          console.log("静的画像URLを使用:", fullUrl);
-          return fullUrl;
-        } else {
-          // /frames/のみを含む場合は/images/を追加
-          const path = url.startsWith('/frames/') ? `/images${url}` : url;
-          const fullUrl = `${STATIC_IMAGES_URL}${path}`;
-          console.log("静的画像URLを使用:", fullUrl);
-          return fullUrl;
-        }
-      } else {
-        // 静的画像URLが設定されていない場合はオリジンを使用
-        const baseUrl = window.location.origin;
-        console.log("相対パスを絶対URLに変換:", `${baseUrl}${url}`);
-        return `${baseUrl}${url}`;
-      }
-    } else {
-      // ファイル名のみの場合は、静的画像URLと組み合わせる
-      if (STATIC_IMAGES_URL) {
-        // 静的画像URLと画像名を結合
-        const fullUrl = `${STATIC_IMAGES_URL}/images/frames/${url}`;
-        console.log("ファイル名のみから静的画像URLを生成:", fullUrl);
-        return fullUrl;
-      }
-      // 静的画像URLが設定されていない場合はプレースホルダーを使用
-      console.log("不正なURL形式のため、プレースホルダーを使用します");
-      return `https://placehold.jp/4fc3f7/ffffff/400x300.png?text=${encodeURIComponent(frame.brand + ' ' + frame.name)}`;
-    }
+    // 緊急対応: 常に特定の画像を返す
+    return "https://tech0-gen-8-step4-eyesmile-front.azurestaticapps.net/images/frames/zoff-sporty-round.jpg";
   };
   
   // 表示用に価格をフォーマット
@@ -362,55 +284,9 @@ const GlassesRecommendation: React.FC<GlassesRecommendationProps> = ({
               onError={(e) => {
                 console.error(`画像の読み込みに失敗しました: ${frame.brand} ${frame.name}`);
                 const target = e.target as HTMLImageElement;
-                const currentSrc = target.src;
-                console.log("失敗した画像URL:", currentSrc);
                 
-                // エラー処理の試行カウント (3回まで試行)
-                const retryCount = parseInt(target.dataset.retryCount || '0', 10);
-                if (retryCount >= 3) {
-                  console.warn("最大試行回数に達しました。プレースホルダー画像を表示します。");
-                  target.src = `https://placehold.jp/4fc3f7/ffffff/400x300.png?text=${encodeURIComponent(frame.brand + ' ' + frame.name)}`;
-                  return;
-                }
-                
-                target.dataset.retryCount = (retryCount + 1).toString();
-                
-                // URLにバックエンドドメインが含まれている場合
-                if (currentSrc.includes('tech0-gen-8-step4-eyesmile-back.azurewebsites.net')) {
-                  try {
-                    // URLからパス部分を抽出
-                    const urlObj = new URL(currentSrc);
-                    const pathParts = urlObj.pathname.split('/');
-                    
-                    // パスに'frames'を含む最後の部分を取得
-                    const framePart = pathParts.findIndex(part => part === 'frames');
-                    if (framePart >= 0) {
-                      const imageName = pathParts.slice(framePart).join('/');
-                      console.log(`別のパスでリトライ: /images/${imageName}`);
-                      
-                      // まずローカルパスを試す
-                      target.src = `/images/${imageName}`;
-                      return;
-                    }
-                  } catch (err) {
-                    console.error('URL解析エラー:', err);
-                  }
-                }
-                
-                // デモモードでなければファイル名のみで再試行
-                if (!DEMO_MODE && frame.image_urls && frame.image_urls.length > 0) {
-                  const fileNameMatch = currentSrc.match(/\/([^\/]+)$/);
-                  if (fileNameMatch && fileNameMatch[1]) {
-                    const fileName = fileNameMatch[1];
-                    console.log(`ファイル名だけで再試行: ${fileName}`);
-                    target.src = `/images/frames/${fileName}`;
-                    return;
-                  }
-                }
-                
-                // すべての方法が失敗した場合、Zoffのダミー画像を使用
-                console.warn("画像の読み込みに失敗しました。ダミー画像を使用します");
-                target.src = `/images/frames/zoff-sporty-round.jpg`;
+                // 緊急対応：常に特定の画像を表示
+                target.src = "https://tech0-gen-8-step4-eyesmile-front.azurestaticapps.net/images/frames/zoff-sporty-round.jpg";
               }}
             />
             
