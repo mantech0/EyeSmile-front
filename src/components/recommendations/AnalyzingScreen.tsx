@@ -25,6 +25,19 @@ const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({
   const handleAutoComplete = useCallback(() => {
     if (onAutoComplete) {
       console.log('解析処理タイムアウト - 自動的に次へ進みます');
+      // すべてのタイマーをクリア
+      if (autoCompleteTimeoutRef.current) {
+        clearTimeout(autoCompleteTimeoutRef.current);
+        autoCompleteTimeoutRef.current = null;
+      }
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      if (forceTimeoutRef.current) {
+        clearTimeout(forceTimeoutRef.current);
+        forceTimeoutRef.current = null;
+      }
       onAutoComplete();
     }
   }, [onAutoComplete]);
@@ -66,7 +79,10 @@ const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({
     }, 2000);
     
     return () => {
-      clearTimeout(forceTimeoutRef.current as NodeJS.Timeout);
+      if (forceTimeoutRef.current) {
+        clearTimeout(forceTimeoutRef.current);
+        forceTimeoutRef.current = null;
+      }
       clearTimeout(skipButtonTimeout);
     };
   }, [handleAutoComplete]);
@@ -75,6 +91,12 @@ const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({
     // デモモードの場合は短時間で終了する
     const intervalTime = isDemo ? 250 : 500;
     
+    // 前のインターバルをクリア
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    
     intervalRef.current = setInterval(() => {
       setDots(prev => prev.length >= 6 ? "." : prev + ".");
       setTimer(prev => prev + 1);
@@ -82,6 +104,12 @@ const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({
     
     // 自動完了のタイマー設定
     if (onAutoComplete) {
+      // 前のタイマーをクリア
+      if (autoCompleteTimeoutRef.current) {
+        clearTimeout(autoCompleteTimeoutRef.current);
+        autoCompleteTimeoutRef.current = null;
+      }
+      
       // デモモードでは短く、通常モードでは長めの時間を設定
       const timeout = autoCompleteTime || (isDemo ? 2000 : 4000);
       console.log(`${timeout}ms後に自動的に次へ進みます (デモモード: ${isDemo})`);
@@ -92,9 +120,11 @@ const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
       if (autoCompleteTimeoutRef.current) {
         clearTimeout(autoCompleteTimeoutRef.current);
+        autoCompleteTimeoutRef.current = null;
       }
     };
   }, [isDemo, autoCompleteTime, handleAutoComplete, onAutoComplete]);
