@@ -88,8 +88,25 @@ const GlassesRecommendation: React.FC<GlassesRecommendationProps> = ({
   
   // 商品画像のURLをチェックして適切な画像を表示する
   const getFrameImageUrl = (urls: string[] | undefined, index: number = 0): string => {
-    // ローカルの画像ファイルを使用
-    return "/images/frames/zoff-sporty-round.jpg";
+    try {
+      // 1. まず本番APIのURLを試す
+      if (urls && urls.length > 0 && urls[index]) {
+        // 外部URLからの画像読み込みが失敗する可能性があるため
+        // ローカルの画像パスを使用
+        return `/images/frames/zoff-sporty-round.jpg`;
+      }
+      
+      // 2. ブランド名とスタイルからローカル画像パスを構築
+      const brandLower = frame.brand.toLowerCase().replace(/\s+/g, '-');
+      const styleLower = frame.style.toLowerCase().replace(/\s+/g, '-');
+      const localPath = `/images/frames/${brandLower}-${styleLower}.jpg`;
+      
+      // 3. どちらも失敗したらデフォルト画像
+      return localPath;
+    } catch (error) {
+      console.error('画像URL生成エラー:', error);
+      return "/images/frames/zoff-sporty-round.jpg";
+    }
   };
   
   // 表示用に価格をフォーマット
@@ -285,8 +302,25 @@ const GlassesRecommendation: React.FC<GlassesRecommendationProps> = ({
                 console.error(`画像の読み込みに失敗しました: ${frame.brand} ${frame.name}`);
                 const target = e.target as HTMLImageElement;
                 
-                // ローカルの画像ファイルにフォールバック
-                target.src = "/images/frames/zoff-sporty-round.jpg";
+                try {
+                  // まずブランド名とスタイルでローカルパスを試す
+                  const brandLower = frame.brand.toLowerCase().replace(/\s+/g, '-');
+                  const styleLower = frame.style.toLowerCase().replace(/\s+/g, '-');
+                  const localPath = `/images/frames/${brandLower}-${styleLower}.jpg`;
+                  
+                  console.log(`ローカル画像パスを試します: ${localPath}`);
+                  target.src = localPath;
+                  
+                  // ローカル画像のロードエラーを検知するためのイベントリスナー
+                  target.onerror = () => {
+                    console.log('ローカル画像も読み込めませんでした。デフォルト画像を使用します。');
+                    target.src = "/images/frames/zoff-sporty-round.jpg";
+                    target.onerror = null; // 無限ループ防止
+                  };
+                } catch (error) {
+                  console.error('画像フォールバックエラー:', error);
+                  target.src = "/images/frames/zoff-sporty-round.jpg";
+                }
               }}
             />
             
