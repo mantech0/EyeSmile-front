@@ -88,8 +88,8 @@ const GlassesRecommendation: React.FC<GlassesRecommendationProps> = ({
   
   // 商品画像のURLをチェックして適切な画像を表示する
   const getFrameImageUrl = (urls: string[] | undefined, index: number = 0): string => {
-    // 緊急対応: 常に特定の画像を返す
-    return "https://tech0-gen-8-step4-eyesmile-front.azurestaticapps.net/images/frames/zoff-sporty-round.jpg";
+    // ローカルの画像ファイルを使用
+    return "/images/frames/zoff-sporty-round.jpg";
   };
   
   // 表示用に価格をフォーマット
@@ -285,8 +285,8 @@ const GlassesRecommendation: React.FC<GlassesRecommendationProps> = ({
                 console.error(`画像の読み込みに失敗しました: ${frame.brand} ${frame.name}`);
                 const target = e.target as HTMLImageElement;
                 
-                // 緊急対応：常に特定の画像を表示
-                target.src = "https://tech0-gen-8-step4-eyesmile-front.azurestaticapps.net/images/frames/zoff-sporty-round.jpg";
+                // ローカルの画像ファイルにフォールバック
+                target.src = "/images/frames/zoff-sporty-round.jpg";
               }}
             />
             
