@@ -6,6 +6,7 @@ import FaceCamera from './components/camera/FaceCamera';
 import RecommendationsPage from './pages/RecommendationsPage';
 import type { FaceMeasurements } from './types/measurements';
 import { submitFaceMeasurements } from './services/api';
+import { isInDemoMode, handleApiError } from './config';
 
 // グローバル型定義は types/global.d.ts に移動しました
 
@@ -16,6 +17,7 @@ const HomePage: React.FC = () => {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [measurementComplete, setMeasurementComplete] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [demoActive, setDemoActive] = useState(isInDemoMode());
 
   useEffect(() => {
     // MediaPipeのCDNファイルが正しくロードされているか確認
@@ -43,6 +45,24 @@ const HomePage: React.FC = () => {
     }
   }, [showCamera]);
 
+  // 定期的にデモモードの状態を確認
+  useEffect(() => {
+    const checkDemoMode = () => {
+      const currentDemoMode = isInDemoMode();
+      if (currentDemoMode !== demoActive) {
+        setDemoActive(currentDemoMode);
+      }
+    };
+    
+    // 初回チェック
+    checkDemoMode();
+    
+    // 1秒ごとにデモモード状態を確認
+    const interval = setInterval(checkDemoMode, 1000);
+    
+    return () => clearInterval(interval);
+  }, [demoActive]);
+
   const handleCapture = async (measurements: FaceMeasurements, image: string) => {
     setCapturedImage(image);
     setError(null);
@@ -55,7 +75,22 @@ const HomePage: React.FC = () => {
       // 測定完了フラグを設定
       setMeasurementComplete(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '顔の測定データの送信中にエラーが発生しました。');
+      // エラー処理
+      if (err instanceof Error) {
+        // API接続エラーの場合、デモモードに切り替える
+        console.error('エラー発生:', err.message);
+        handleApiError(err);
+        
+        // すでにデモモードになっているか確認
+        if (isInDemoMode()) {
+          console.log('デモモードでエラーをバイパスし、測定完了とします');
+          setMeasurementComplete(true);
+          return;
+        }
+        setError(err.message);
+      } else {
+        setError('顔の測定データの送信中にエラーが発生しました。');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -69,6 +104,11 @@ const HomePage: React.FC = () => {
   return (
     <div className="App">
       <h1>EyeSmile</h1>
+      {demoActive && (
+        <div className="demo-mode-badge">
+          デモモード有効
+        </div>
+      )}
       {!showCamera ? (
         <>
           <QuestionnaireContainer onComplete={() => setShowCamera(true)} />
