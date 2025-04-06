@@ -71,4 +71,17 @@ p {
 .captured-data img {
   border-radius: 4px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* デモモードバッジ */
+.demo-mode-badge {
+  background-color: #ffb74d;
+  color: #7b341e;
+  font-weight: bold;
+  font-size: 0.9rem;
+  padding: 4px 12px;
+  border-radius: 16px;
+  display: inline-block;
+  margin-bottom: 1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 } 

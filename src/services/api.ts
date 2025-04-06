@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { Answer } from '../types/questionnaire';
 import { FaceMeasurements } from '../types/measurements';
+import { isInDemoMode } from '../config';
 
 // APIのベースURL設定
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://tech0-gen-8-step4-eyesmile-back.azurewebsites.net';
@@ -103,6 +104,16 @@ const PREFERENCE_MAPPINGS: { [key: string]: number } = {
 
 export const submitQuestionnaire = async (answers: Answer[]) => {
   try {
+    // デモモードの場合、APIリクエストをスキップ
+    if (isInDemoMode()) {
+      console.log('デモモード: アンケート送信をシミュレート');
+      return {
+        status: "success", 
+        message: "デモモード：回答を受け付けました",
+        demo_mode: true
+      };
+    }
+
     // リクエストデータの作成
     const requestData = {
       responses: answers.map(answer => {
@@ -170,6 +181,16 @@ export const submitQuestionnaire = async (answers: Answer[]) => {
 // 顔の測定データをサーバーに送信
 export const submitFaceMeasurements = async (measurements: FaceMeasurements) => {
   try {
+    // デモモードの場合、APIリクエストをスキップ
+    if (isInDemoMode()) {
+      console.log('デモモード: 顔測定データ送信をシミュレート');
+      return {
+        status: "success", 
+        message: "デモモード：顔測定データを受け付けました",
+        demo_mode: true
+      };
+    }
+
     // 仮のユーザーID（本来はログインユーザーのIDを使用）
     const temporary_user_id = 1;
 
