@@ -335,31 +335,31 @@ const GlassesRecommendation: React.FC<GlassesRecommendationProps> = ({
             }}
             onClick={() => onTryOn && onTryOn(selectedFrame)}
           >
+            {/* 画像コンテナを完全に固定サイズに */}
             <Box
               sx={{
-                height: 200,
+                height: 180,
                 width: '100%',
                 backgroundColor: '#ffffff',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                overflow: 'hidden',
-                p: 2
+                padding: 2,
+                position: 'relative'
               }}
             >
-              <CardMedia
-                component="img"
+              <img
+                src={getFrameImageUrl(frame.image_urls)}
                 alt={`${frame.brand} ${frame.name}`}
-                image={getFrameImageUrl(frame.image_urls)}
-                sx={{ 
-                  objectFit: 'contain',
-                  maxHeight: '180px',
+                style={{
+                  maxHeight: '100%',
                   maxWidth: '100%',
+                  objectFit: 'contain',
+                  display: 'block'
                 }}
                 onError={(e) => {
                   console.error(`画像の読み込みに失敗しました: ${frame.brand} ${frame.name}`);
                   const target = e.target as HTMLImageElement;
-                  // 単純にデフォルト画像に切り替え
                   target.src = "/images/frames/ZJ71017_49A1.jpg";
                   target.onerror = null; // 無限ループ防止
                 }}
