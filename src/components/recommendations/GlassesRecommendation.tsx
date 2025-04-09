@@ -335,36 +335,42 @@ const GlassesRecommendation: React.FC<GlassesRecommendationProps> = ({
             }}
             onClick={() => onTryOn && onTryOn(selectedFrame)}
           >
-            {/* 画像コンテナを完全に固定サイズに */}
-            <Box
-              sx={{
-                height: 180,
-                width: '100%',
-                backgroundColor: '#ffffff',
+            {/* 商品画像の表示エリア - アスペクト比を固定 */}
+            <div style={{ 
+              width: '100%', 
+              paddingTop: '56.25%', /* 16:9アスペクト比 */
+              position: 'relative',
+              backgroundColor: 'white'
+            }}>
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                bottom: 0,
+                right: 0,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                padding: 2,
-                position: 'relative'
-              }}
-            >
-              <img
-                src={getFrameImageUrl(frame.image_urls)}
-                alt={`${frame.brand} ${frame.name}`}
-                style={{
-                  maxHeight: '100%',
-                  maxWidth: '100%',
-                  objectFit: 'contain',
-                  display: 'block'
-                }}
-                onError={(e) => {
-                  console.error(`画像の読み込みに失敗しました: ${frame.brand} ${frame.name}`);
-                  const target = e.target as HTMLImageElement;
-                  target.src = "/images/frames/ZJ71017_49A1.jpg";
-                  target.onerror = null; // 無限ループ防止
-                }}
-              />
-            </Box>
+                padding: '1rem'
+              }}>
+                <img
+                  src={getFrameImageUrl(frame.image_urls)}
+                  alt={`${frame.brand} ${frame.name}`}
+                  style={{
+                    maxWidth: '80%',
+                    maxHeight: '80%',
+                    objectFit: 'contain',
+                    margin: '0 auto'
+                  }}
+                  onError={(e) => {
+                    console.error(`画像の読み込みに失敗しました: ${frame.brand} ${frame.name}`);
+                    const target = e.target as HTMLImageElement;
+                    target.src = "/images/frames/ZJ71017_49A1.jpg";
+                    target.onerror = null; // 無限ループ防止
+                  }}
+                />
+              </div>
+            </div>
             
             <CardContent sx={{ flexGrow: 1 }}>
               <Typography variant="subtitle2" color="text.secondary" gutterBottom>
