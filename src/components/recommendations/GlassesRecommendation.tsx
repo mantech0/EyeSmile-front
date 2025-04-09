@@ -326,6 +326,8 @@ const GlassesRecommendation: React.FC<GlassesRecommendationProps> = ({
               boxShadow: 3,
               cursor: 'pointer',
               transition: 'all 0.3s ease',
+              display: 'flex',
+              flexDirection: 'column',
               '&:hover': {
                 boxShadow: 5
               }
@@ -337,7 +339,17 @@ const GlassesRecommendation: React.FC<GlassesRecommendationProps> = ({
               alt={`${frame.brand} ${frame.name}`}
               height="240"
               image={getFrameImageUrl(frame.image_urls)}
-              sx={{ objectFit: 'contain', p: 2, backgroundColor: '#ffffff' }}
+              sx={{ 
+                objectFit: 'contain', 
+                p: 2, 
+                backgroundColor: '#ffffff',
+                maxHeight: '240px',
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto'
+              }}
               onError={(e) => {
                 console.error(`画像の読み込みに失敗しました: ${frame.brand} ${frame.name}`);
                 const target = e.target as HTMLImageElement;
