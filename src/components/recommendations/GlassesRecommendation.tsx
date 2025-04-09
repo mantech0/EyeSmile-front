@@ -328,36 +328,43 @@ const GlassesRecommendation: React.FC<GlassesRecommendationProps> = ({
               transition: 'all 0.3s ease',
               display: 'flex',
               flexDirection: 'column',
+              overflow: 'hidden',
               '&:hover': {
                 boxShadow: 5
               }
             }}
             onClick={() => onTryOn && onTryOn(selectedFrame)}
           >
-            <CardMedia
-              component="img"
-              alt={`${frame.brand} ${frame.name}`}
-              height="240"
-              image={getFrameImageUrl(frame.image_urls)}
-              sx={{ 
-                objectFit: 'contain', 
-                p: 2, 
-                backgroundColor: '#ffffff',
-                maxHeight: '240px',
+            <Box
+              sx={{
+                height: 200,
                 width: '100%',
+                backgroundColor: '#ffffff',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                margin: '0 auto'
+                overflow: 'hidden',
+                p: 2
               }}
-              onError={(e) => {
-                console.error(`画像の読み込みに失敗しました: ${frame.brand} ${frame.name}`);
-                const target = e.target as HTMLImageElement;
-                // 単純にデフォルト画像に切り替え
-                target.src = "/images/frames/ZJ71017_49A1.jpg";
-                target.onerror = null; // 無限ループ防止
-              }}
-            />
+            >
+              <CardMedia
+                component="img"
+                alt={`${frame.brand} ${frame.name}`}
+                image={getFrameImageUrl(frame.image_urls)}
+                sx={{ 
+                  objectFit: 'contain',
+                  maxHeight: '180px',
+                  maxWidth: '100%',
+                }}
+                onError={(e) => {
+                  console.error(`画像の読み込みに失敗しました: ${frame.brand} ${frame.name}`);
+                  const target = e.target as HTMLImageElement;
+                  // 単純にデフォルト画像に切り替え
+                  target.src = "/images/frames/ZJ71017_49A1.jpg";
+                  target.onerror = null; // 無限ループ防止
+                }}
+              />
+            </Box>
             
             <CardContent sx={{ flexGrow: 1 }}>
               <Typography variant="subtitle2" color="text.secondary" gutterBottom>
