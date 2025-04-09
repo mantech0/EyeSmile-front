@@ -90,21 +90,62 @@ const GlassesRecommendation: React.FC<GlassesRecommendationProps> = ({
   const getFrameImageUrl = (urls: string[] | undefined, index: number = 0): string => {
     try {
       // デフォルト画像（最終的なフォールバック）
-      const defaultImagePath = "/images/frames/zoff-sporty-round.jpg";
+      const defaultImagePath = "/images/frames/ZJ71017_49A1.jpg";
       
       // 商品画像がない場合はデフォルト画像を返す
       if (!urls || urls.length === 0) {
-        console.log('商品画像URLがありません、デフォルト画像を使用します');
-        return defaultImagePath;
+        console.log('商品画像URLがありません、ローカル画像を検索します');
+        
+        // フレーム情報からブランドとモデル名を取得
+        const brandLower = frame.brand.toLowerCase();
+        const nameLower = frame.name.toLowerCase();
+        
+        // ブランド名から画像のプレフィックスを推測
+        let prefix = '';
+        if (brandLower.includes('zoff')) {
+          prefix = 'Z';
+        } else if (brandLower.includes('jins')) {
+          prefix = 'J';
+        }
+        
+        // 画像名のパターンを作成（Zoffの場合はZJ、ZSなどで始まる可能性）
+        // フレームシェイプに基づいて画像を選択
+        let shapeCode = '';
+        if (frame.shape.toLowerCase().includes('round')) {
+          shapeCode = '49A1';  // ラウンド型
+        } else if (frame.shape.toLowerCase().includes('square')) {
+          shapeCode = '14E1';  // スクエア型
+        } else if (frame.shape.toLowerCase().includes('oval')) {
+          shapeCode = '42A1';  // オーバル型
+        } else {
+          shapeCode = '49A1';  // デフォルトはラウンド
+        }
+        
+        // 複数の可能性のあるファイル名パターンを試す
+        const possiblePatterns = [
+          `${prefix}J*_${shapeCode}.jpg`,
+          `${prefix}S*_${shapeCode}.jpg`,
+          `${prefix}*_${shapeCode}.jpg`
+        ];
+        
+        // コンソールで確認
+        console.log('探している画像パターン:', possiblePatterns);
+        
+        // 特定のフレームが見つからない場合は同じ形状の別のフレームを使用
+        return `/images/frames/ZJ71017_${shapeCode}.jpg`;
       }
       
-      // AzureへのCORS問題を回避するためにローカル画像を使用
-      // 実際の環境でCORSが正しく設定されている場合は、以下の行をコメントアウトし、
-      // return urls[index]; のみを有効にしてください
-      return defaultImagePath;
+      // バックエンドAPIから提供されたURLがある場合はそれを使用
+      // (CORS問題が解決されている場合のみ)
+      if (urls[index] && urls[index].startsWith('http')) {
+        return urls[index];
+      }
+      
+      // ローカルの画像パスが提供されている場合
+      return urls[index] || defaultImagePath;
     } catch (error) {
       console.error('画像URL生成エラー:', error);
-      return "/images/frames/zoff-sporty-round.jpg";
+      return "/images/frames/ZJ71017_49A1.jpg";
     }
   };
   
@@ -301,7 +342,7 @@ const GlassesRecommendation: React.FC<GlassesRecommendationProps> = ({
                 console.error(`画像の読み込みに失敗しました: ${frame.brand} ${frame.name}`);
                 const target = e.target as HTMLImageElement;
                 // 単純にデフォルト画像に切り替え
-                target.src = "/images/frames/zoff-sporty-round.jpg";
+                target.src = "/images/frames/ZJ71017_49A1.jpg";
                 target.onerror = null; // 無限ループ防止
               }}
             />
