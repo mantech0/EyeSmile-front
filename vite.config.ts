@@ -24,10 +24,13 @@ export default defineConfig({
     cors: true,
     hmr: {
       overlay: true,
+    },
+    headers: {
+      'Content-Security-Policy': "default-src 'self' https://cdn.jsdelivr.net; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: blob: https://cdn.jsdelivr.net; media-src 'self' blob:; connect-src 'self' https://cdn.jsdelivr.net blob:; worker-src 'self' blob:;"
     }
   },
   optimizeDeps: {
-    exclude: ['@mediapipe/face_mesh', '@mediapipe/camera_utils', '@mediapipe/drawing_utils'],
-    include: ['react', 'react-dom']
+    include: ['react', 'react-dom'],
+    exclude: ['@mediapipe/face_mesh', '@mediapipe/camera_utils', '@mediapipe/drawing_utils']
   },
 }) 

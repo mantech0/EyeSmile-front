@@ -24,59 +24,64 @@ const RealtimeTryOn: React.FC<RealtimeTryOnProps> = ({ selectedGlasses, onLoad, 
         }
 
         // MediaPipeの初期化を待機
-        await import('@mediapipe/face_mesh');
-        onLoad?.();
+        try {
+          await import('@mediapipe/face_mesh');
+          onLoad?.();
 
-        const faceMesh = new FaceMesh({
-          locateFile: (file) => {
-            return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
-          }
-        });
-
-        faceMesh.setOptions({
-          maxNumFaces: 1,
-          refineLandmarks: true,
-          minDetectionConfidence: 0.5,
-          minTrackingConfidence: 0.5,
-        });
-
-        faceMesh.onResults((results: any) => {
-          if (!canvasRef.current) return;
-
-          const canvasCtx = canvasRef.current.getContext('2d');
-          if (!canvasCtx) return;
-
-          canvasCtx.save();
-          canvasCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-          canvasCtx.drawImage(results.image, 0, 0, canvasRef.current.width, canvasRef.current.height);
-
-          if (results.multiFaceLandmarks) {
-            for (const landmarks of results.multiFaceLandmarks) {
-              drawConnectors(canvasCtx, landmarks, FaceMesh.FACEMESH_TESSELATION, {
-                color: '#C0C0C070',
-                lineWidth: 1,
-              });
+          const faceMesh = new FaceMesh({
+            locateFile: (file) => {
+              return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/${file}`;
             }
+          });
+
+          faceMesh.setOptions({
+            maxNumFaces: 1,
+            refineLandmarks: true,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5,
+          });
+
+          faceMesh.onResults((results: any) => {
+            if (!canvasRef.current) return;
+
+            const canvasCtx = canvasRef.current.getContext('2d');
+            if (!canvasCtx) return;
+
+            canvasCtx.save();
+            canvasCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+            canvasCtx.drawImage(results.image, 0, 0, canvasRef.current.width, canvasRef.current.height);
+
+            if (results.multiFaceLandmarks) {
+              for (const landmarks of results.multiFaceLandmarks) {
+                drawConnectors(canvasCtx, landmarks, FaceMesh.FACEMESH_TESSELATION, {
+                  color: '#C0C0C070',
+                  lineWidth: 1,
+                });
+              }
+            }
+
+            canvasCtx.restore();
+          });
+
+          if (!videoRef.current) {
+            throw new Error('ビデオ要素の初期化に失敗しました');
           }
 
-          canvasCtx.restore();
-        });
+          const newCamera = new Camera(videoRef.current, {
+            onFrame: async () => {
+              if (!videoRef.current) return;
+              await faceMesh.send({ image: videoRef.current });
+            },
+            width: 640,
+            height: 480
+          });
 
-        if (!videoRef.current) {
-          throw new Error('ビデオ要素の初期化に失敗しました');
+          setCamera(newCamera);
+          await newCamera.start();
+        } catch (error) {
+          console.error('Error initializing camera or MediaPipe:', error);
+          onError?.(error instanceof Error ? error.message : '仮想トライオン機能の初期化に失敗しました');
         }
-
-        const newCamera = new Camera(videoRef.current, {
-          onFrame: async () => {
-            if (!videoRef.current) return;
-            await faceMesh.send({ image: videoRef.current });
-          },
-          width: 640,
-          height: 480
-        });
-
-        setCamera(newCamera);
-        await newCamera.start();
       } catch (error) {
         console.error('Error initializing camera or MediaPipe:', error);
         onError?.(error instanceof Error ? error.message : '仮想トライオン機能の初期化に失敗しました');
