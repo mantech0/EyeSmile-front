@@ -11,62 +11,86 @@ const RealtimeTryOn: React.FC<RealtimeTryOnProps> = ({ selectedGlasses }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [camera, setCamera] = useState<Camera | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!videoRef.current || !canvasRef.current) return;
 
-    const faceMesh = new FaceMesh({
-      locateFile: (file) => {
-        return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
-      },
-    });
+    const initializeCamera = async () => {
+      try {
+        // カメラのアクセス許可を確認
+        await navigator.mediaDevices.getUserMedia({ video: true });
 
-    faceMesh.setOptions({
-      maxNumFaces: 1,
-      refineLandmarks: true,
-      minDetectionConfidence: 0.5,
-      minTrackingConfidence: 0.5,
-    });
+        const faceMesh = new FaceMesh({
+          locateFile: (file) => {
+            return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/${file}`;
+          },
+        });
 
-    faceMesh.onResults((results: any) => {
-      if (!canvasRef.current) return;
+        faceMesh.setOptions({
+          maxNumFaces: 1,
+          refineLandmarks: true,
+          minDetectionConfidence: 0.5,
+          minTrackingConfidence: 0.5,
+        });
 
-      const canvasCtx = canvasRef.current.getContext('2d');
-      if (!canvasCtx) return;
+        faceMesh.onResults((results: any) => {
+          if (!canvasRef.current) return;
 
-      canvasCtx.save();
-      canvasCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-      canvasCtx.drawImage(results.image, 0, 0, canvasRef.current.width, canvasRef.current.height);
+          const canvasCtx = canvasRef.current.getContext('2d');
+          if (!canvasCtx) return;
 
-      if (results.multiFaceLandmarks) {
-        for (const landmarks of results.multiFaceLandmarks) {
-          drawConnectors(canvasCtx, landmarks, FaceMesh.FACEMESH_TESSELATION, {
-            color: '#C0C0C070',
-            lineWidth: 1,
-          });
-        }
+          canvasCtx.save();
+          canvasCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+          canvasCtx.drawImage(results.image, 0, 0, canvasRef.current.width, canvasRef.current.height);
+
+          if (results.multiFaceLandmarks) {
+            for (const landmarks of results.multiFaceLandmarks) {
+              drawConnectors(canvasCtx, landmarks, FaceMesh.FACEMESH_TESSELATION, {
+                color: '#C0C0C070',
+                lineWidth: 1,
+              });
+            }
+          }
+
+          canvasCtx.restore();
+        });
+
+        const newCamera = new Camera(videoRef.current, {
+          onFrame: async () => {
+            if (!videoRef.current) return;
+            await faceMesh.send({ image: videoRef.current });
+          },
+          width: 640,
+          height: 480,
+        });
+
+        setCamera(newCamera);
+        await newCamera.start();
+      } catch (err) {
+        console.error('Error initializing camera:', err);
+        setError(err instanceof Error ? err.message : '試着機能の初期化に失敗しました');
       }
+    };
 
-      canvasCtx.restore();
-    });
-
-    const newCamera = new Camera(videoRef.current, {
-      onFrame: async () => {
-        if (!videoRef.current) return;
-        await faceMesh.send({ image: videoRef.current });
-      },
-      width: 640,
-      height: 480,
-    });
-
-    setCamera(newCamera);
-    newCamera.start();
+    initializeCamera();
 
     return () => {
-      newCamera.stop();
-      faceMesh.close();
+      if (camera) {
+        camera.stop();
+      }
     };
   }, []);
+
+  if (error) {
+    return (
+      <div style={{ color: 'red', padding: '20px' }}>
+        エラー: {error}
+        <br />
+        カメラへのアクセスを許可してください。
+      </div>
+    );
+  }
 
   return (
     <div style={{ position: 'relative', width: '640px', height: '480px' }}>
