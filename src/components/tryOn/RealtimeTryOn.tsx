@@ -29,8 +29,8 @@ const RealtimeTryOn: React.FC<RealtimeTryOnProps> = ({ selectedGlasses, onLoad, 
 
         const faceMesh = new FaceMesh({
           locateFile: (file) => {
-            return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/${file}`;
-          },
+            return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
+          }
         });
 
         faceMesh.setOptions({
@@ -62,12 +62,17 @@ const RealtimeTryOn: React.FC<RealtimeTryOnProps> = ({ selectedGlasses, onLoad, 
           canvasCtx.restore();
         });
 
+        if (!videoRef.current) {
+          throw new Error('ビデオ要素の初期化に失敗しました');
+        }
+
         const newCamera = new Camera(videoRef.current, {
           onFrame: async () => {
+            if (!videoRef.current) return;
             await faceMesh.send({ image: videoRef.current });
           },
           width: 640,
-          height: 480,
+          height: 480
         });
 
         setCamera(newCamera);
