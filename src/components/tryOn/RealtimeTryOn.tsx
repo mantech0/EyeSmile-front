@@ -14,7 +14,10 @@ const RealtimeTryOn: React.FC<RealtimeTryOnProps> = ({ selectedGlasses }) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!videoRef.current || !canvasRef.current) return;
+    const videoElement = videoRef.current;
+    const canvasElement = canvasRef.current;
+    
+    if (!videoElement || !canvasElement) return;
 
     const initializeCamera = async () => {
       try {
@@ -35,14 +38,14 @@ const RealtimeTryOn: React.FC<RealtimeTryOnProps> = ({ selectedGlasses }) => {
         });
 
         faceMesh.onResults((results: any) => {
-          if (!canvasRef.current) return;
+          if (!canvasElement) return;
 
-          const canvasCtx = canvasRef.current.getContext('2d');
+          const canvasCtx = canvasElement.getContext('2d');
           if (!canvasCtx) return;
 
           canvasCtx.save();
-          canvasCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-          canvasCtx.drawImage(results.image, 0, 0, canvasRef.current.width, canvasRef.current.height);
+          canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+          canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
 
           if (results.multiFaceLandmarks) {
             for (const landmarks of results.multiFaceLandmarks) {
@@ -56,10 +59,9 @@ const RealtimeTryOn: React.FC<RealtimeTryOnProps> = ({ selectedGlasses }) => {
           canvasCtx.restore();
         });
 
-        const newCamera = new Camera(videoRef.current, {
+        const newCamera = new Camera(videoElement, {
           onFrame: async () => {
-            if (!videoRef.current) return;
-            await faceMesh.send({ image: videoRef.current });
+            await faceMesh.send({ image: videoElement });
           },
           width: 640,
           height: 480,
