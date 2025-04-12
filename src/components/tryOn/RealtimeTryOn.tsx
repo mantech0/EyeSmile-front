@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Camera } from '@mediapipe/camera_utils';
-import { FaceMesh, FACEMESH_TESSELATION, Results } from '@mediapipe/face_mesh';
+import { FaceMesh } from '@mediapipe/face_mesh';
 import { drawConnectors } from '@mediapipe/drawing_utils';
 
 interface RealtimeTryOnProps {
@@ -28,7 +28,7 @@ const RealtimeTryOn: React.FC<RealtimeTryOnProps> = ({ selectedGlasses }) => {
       minTrackingConfidence: 0.5,
     });
 
-    faceMesh.onResults((results) => {
+    faceMesh.onResults((results: any) => {
       if (!canvasRef.current) return;
 
       const canvasCtx = canvasRef.current.getContext('2d');
@@ -40,7 +40,7 @@ const RealtimeTryOn: React.FC<RealtimeTryOnProps> = ({ selectedGlasses }) => {
 
       if (results.multiFaceLandmarks) {
         for (const landmarks of results.multiFaceLandmarks) {
-          drawConnectors(canvasCtx, landmarks, FACEMESH_TESSELATION, {
+          drawConnectors(canvasCtx, landmarks, FaceMesh.FACEMESH_TESSELATION, {
             color: '#C0C0C070',
             lineWidth: 1,
           });
