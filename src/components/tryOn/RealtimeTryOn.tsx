@@ -1,8 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Camera } from '@mediapipe/camera_utils';
-import { FaceMesh } from '@mediapipe/face_mesh';
+import { FaceMesh, FACEMESH_TESSELATION, Results } from '@mediapipe/face_mesh';
 import { drawConnectors } from '@mediapipe/drawing_utils';
-import { FACEMESH_TESSELATION } from '@mediapipe/face_mesh';
 
 interface RealtimeTryOnProps {
   selectedGlasses: string | null;
