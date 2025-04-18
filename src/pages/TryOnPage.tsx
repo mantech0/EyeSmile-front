@@ -52,6 +52,11 @@ const TryOnPage: React.FC = () => {
   const navigate = useNavigate();
   const { selectedStaff } = useStaff();
 
+  // デバッグログを追加
+  useEffect(() => {
+    console.log('TryOnPage - 選択されたスタッフ情報:', selectedStaff);
+  }, [selectedStaff]);
+
   // デフォルトのスタッフを設定（選択されていない場合）
   const defaultStaff = selectedStaff || staffMembers[0];
 
@@ -307,18 +312,24 @@ const TryOnPage: React.FC = () => {
             gap: 2
           }}>
             {/* スタッフアバター */}
-            <Box sx={{ 
-              width: '60px', 
-              height: '60px', 
-              borderRadius: '50%', 
-              overflow: 'hidden',
-              border: '2px solid white',
-              boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
-              flexShrink: 0
-            }}>
+            <Box 
+              sx={{ 
+                width: '60px', 
+                height: '60px', 
+                borderRadius: '50%', 
+                overflow: 'hidden',
+                border: '2px solid white',
+                boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
+                flexShrink: 0
+              }}
+              onClick={() => {
+                console.log("現在のスタッフ: ", selectedStaff);
+                console.log("スタッフID: ", selectedStaff?.id);
+              }}
+            >
               <img 
-                src={defaultStaff.image} 
-                alt={defaultStaff.name} 
+                src={selectedStaff ? selectedStaff.image : staffMembers[0].image} 
+                alt={selectedStaff ? selectedStaff.name : staffMembers[0].name} 
                 style={{ 
                   width: '100%', 
                   height: '100%', 
@@ -350,9 +361,27 @@ const TryOnPage: React.FC = () => {
               }
             }}>
               <Typography sx={{ position: 'relative', zIndex: 1 }}>
-                {userRating === 'いいね！' && 'お似合いです！知的で洗練された雰囲気が出ていますね！'}
-                {userRating === 'まあまあ' && '今かけているアイウェアは、ややなりたいイメージ（おしゃれ）というよりは、ちょっとビジネス寄りに見えるかもしれないですね！'}
-                {userRating === 'いまいち' && 'ご意見ありがとうございます。別のスタイルやカラーをご提案しますので、ぜひ他のフレームもお試しください。'}
+                {userRating === 'いいね！' && (
+                  selectedStaff && selectedStaff.id === 1 ? 'お似合いです！知的で洗練された雰囲気が出ていますね！' :
+                  selectedStaff && selectedStaff.id === 2 ? 'とても素晴らしい選択です。フレームの角度が絶妙ですね。' :
+                  selectedStaff && selectedStaff.id === 3 ? 'トレンド感があってお洒落ですね！とても似合っています！' :
+                  selectedStaff && selectedStaff.id === 4 ? 'Perfect choice! このフレームはあなたの表情を引き立てています！' :
+                  'お似合いです！素敵な雰囲気になりますね！'
+                )}
+                {userRating === 'まあまあ' && (
+                  selectedStaff && selectedStaff.id === 1 ? '今かけているアイウェアは、ややなりたいイメージ（おしゃれ）というよりは、ちょっとビジネス寄りに見えるかもしれないですね！' :
+                  selectedStaff && selectedStaff.id === 2 ? 'フレームの形は良いですが、もう少し調整が必要かもしれませんね。他のスタイルも試してみましょう。' :
+                  selectedStaff && selectedStaff.id === 3 ? 'もう少しカラーバリエーションを試してみると、より魅力的になるかも！' :
+                  selectedStaff && selectedStaff.id === 4 ? 'Not bad! ただ他のデザインも試してみる価値はありますよ！' :
+                  'もう少し調整すると、より良くなりそうですね！'
+                )}
+                {userRating === 'いまいち' && (
+                  selectedStaff && selectedStaff.id === 1 ? 'ご意見ありがとうございます。別のスタイルやカラーをご提案しますので、ぜひ他のフレームもお試しください。' :
+                  selectedStaff && selectedStaff.id === 2 ? '承知しました。お客様の顔立ちに合わせた別のフレームをご用意します。' :
+                  selectedStaff && selectedStaff.id === 3 ? 'もっとお似合いするフレームがあるはず！他にも素敵なデザインがありますよ！' :
+                  selectedStaff && selectedStaff.id === 4 ? 'I see! 他のフレームで印象が変わるか試してみましょう！' :
+                  '他のフレームも試してみましょう！'
+                )}
               </Typography>
             </Box>
           </Box>

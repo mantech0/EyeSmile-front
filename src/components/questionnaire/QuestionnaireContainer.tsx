@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Question, Answer } from '../../types/questionnaire';
 import QuestionCard from './QuestionCard';
 import StepIndicator from './StepIndicator';
@@ -16,6 +16,31 @@ const QuestionnaireContainer: React.FC<QuestionnaireContainerProps> = ({ onCompl
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isComplete, setIsComplete] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // スクロールを有効化する
+    useEffect(() => {
+        // HTML要素のスクロールを確実に有効化
+        document.documentElement.style.overflow = 'auto';
+        document.body.style.overflow = 'auto';
+        
+        // iOSでのスクロール問題を解決するためのタッチイベントリスナー
+        const handleTouchMove = (e: TouchEvent) => {
+            // デフォルトの動作を妨げない
+            e.stopPropagation();
+        };
+        
+        document.addEventListener('touchmove', handleTouchMove, { passive: true });
+        
+        // クリーンアップ
+        return () => {
+            document.removeEventListener('touchmove', handleTouchMove);
+        };
+    }, []);
+
+    // 質問が変わった時に上部にスクロール
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, [currentStep]);
 
     // 仮のデータ（後でAPIから取得）
     const questions: Question[] = [
@@ -88,9 +113,6 @@ const QuestionnaireContainer: React.FC<QuestionnaireContainerProps> = ({ onCompl
     if (isComplete) {
         return (
             <div className="questionnaire-page">
-                <div className="ios-header">
-                    iPhone 16 Pro - {currentStep + 1}
-                </div>
                 <div className="questionnaire-container">
                     <div className="questionnaire-complete">
                         <h2>ありがとうございました！</h2>
@@ -103,9 +125,6 @@ const QuestionnaireContainer: React.FC<QuestionnaireContainerProps> = ({ onCompl
 
     return (
         <div className="questionnaire-page">
-            <div className="ios-header">
-                iPhone 16 Pro - {currentStep + 1}
-            </div>
             <div className="questionnaire-container">
                 <StepIndicator 
                     currentStep={currentStep} 
@@ -117,6 +136,10 @@ const QuestionnaireContainer: React.FC<QuestionnaireContainerProps> = ({ onCompl
                     currentAnswers={currentAnswers}
                 />
                 {error && <div className="error-message">{error}</div>}
+                
+                {/* 余分なスペースを追加して「次へ」ボタンが見えるようにする */}
+                <div style={{ height: '60px' }} />
+                
                 <NavigationButtons
                     onNext={() => {
                         if (currentStep === questions.length - 1) {
