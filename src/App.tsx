@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import QuestionnaireContainer from './components/questionnaire/QuestionnaireContainer';
 import FaceCamera from './components/camera/FaceCamera';
 import RecommendationsPage from './pages/RecommendationsPage';
+import TryOnPage from './pages/TryOnPage';
+import LoginPage from './pages/LoginPage';
+import QuestionnairePage from './pages/QuestionnairePage';
+import StaffPage from './pages/StaffPage';
+import { StaffProvider } from './context/StaffContext';
 import type { FaceMeasurements } from './types/measurements';
 import { submitFaceMeasurements } from './services/api';
 import { isInDemoMode, handleApiError } from './config';
@@ -11,7 +16,55 @@ import { isInDemoMode, handleApiError } from './config';
 // グローバル型定義は types/global.d.ts に移動しました
 
 const HomePage: React.FC = () => {
-  const [showCamera, setShowCamera] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [demoActive, setDemoActive] = useState(isInDemoMode());
+  const navigate = useNavigate();
+
+  // 定期的にデモモードの状態を確認
+  useEffect(() => {
+    const checkDemoMode = () => {
+      const currentDemoMode = isInDemoMode();
+      if (currentDemoMode !== demoActive) {
+        setDemoActive(currentDemoMode);
+      }
+    };
+    
+    // 初回チェック
+    checkDemoMode();
+    
+    // 1秒ごとにデモモード状態を確認
+    const interval = setInterval(checkDemoMode, 1000);
+    
+    return () => clearInterval(interval);
+  }, [demoActive]);
+
+  const handleQuestionnaireComplete = () => {
+    // アンケート完了後、カメラページに進む
+    navigate('/camera');
+  };
+
+  return (
+    <div className="App" style={{ 
+      width: '100%', 
+      maxWidth: '100%', 
+      overflowX: 'hidden',
+      margin: 0,
+      padding: 0
+    }}>
+      <h1>EyeSmile</h1>
+      {demoActive && (
+        <div className="demo-mode-badge">
+          デモモード有効
+        </div>
+      )}
+      <QuestionnaireContainer onComplete={handleQuestionnaireComplete} />
+    </div>
+  );
+};
+
+// カメラページコンポーネント
+const CameraPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
@@ -40,10 +93,8 @@ const HomePage: React.FC = () => {
       }
     };
 
-    if (showCamera) {
-      checkMediaPipeLoaded();
-    }
-  }, [showCamera]);
+    checkMediaPipeLoaded();
+  }, []);
 
   // 定期的にデモモードの状態を確認
   useEffect(() => {
@@ -102,59 +153,67 @@ const HomePage: React.FC = () => {
   }
 
   return (
-    <div className="App">
+    <div className="App" style={{ 
+      width: '100%', 
+      maxWidth: '100%', 
+      overflowX: 'hidden',
+      margin: 0,
+      padding: 0
+    }}>
       <h1>EyeSmile</h1>
       {demoActive && (
         <div className="demo-mode-badge">
           デモモード有効
         </div>
       )}
-      {!showCamera ? (
-        <>
-          <QuestionnaireContainer onComplete={() => setShowCamera(true)} />
-        </>
-      ) : (
-        <div className="camera-section">
-          {cameraError ? (
-            <div className="error-message">
-              <h3>カメラエラー</h3>
-              <p>{cameraError}</p>
-              <button onClick={() => window.location.reload()}>ページを更新</button>
-            </div>
-          ) : (
-            <FaceCamera onCapture={handleCapture} />
-          )}
-          {error && (
-            <div className="error-message">
-              {error}
-            </div>
-          )}
-          {isSubmitting && (
-            <div className="loading-message">
-              データを送信中...
-            </div>
-          )}
-          {capturedImage && (
-            <div className="captured-data">
-              <h3>撮影データ</h3>
-              <img src={capturedImage} alt="撮影画像" style={{ maxWidth: '300px' }} />
-            </div>
-          )}
-        </div>
-      )}
+      <div className="camera-section">
+        {cameraError ? (
+          <div className="error-message">
+            <h3>カメラエラー</h3>
+            <p>{cameraError}</p>
+            <button onClick={() => window.location.reload()}>ページを更新</button>
+          </div>
+        ) : (
+          <FaceCamera onCapture={handleCapture} />
+        )}
+        {error && (
+          <div className="error-message">
+            {error}
+          </div>
+        )}
+        {isSubmitting && (
+          <div className="loading-message">
+            データを送信中...
+          </div>
+        )}
+        {capturedImage && (
+          <div className="captured-data">
+            <h3>撮影データ</h3>
+            <img src={capturedImage} alt="撮影画像" style={{ maxWidth: '300px' }} />
+          </div>
+        )}
+      </div>
     </div>
   );
 };
 
 function App(): React.ReactElement {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/recommendations" element={<RecommendationsPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Router>
+    <StaffProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/staff" element={<StaffPage />} />
+          <Route path="/questionnaire" element={<QuestionnairePage />} />
+          <Route path="/qa" element={<HomePage />} />
+          <Route path="/camera" element={<CameraPage />} />
+          <Route path="/recommendations" element={<RecommendationsPage />} />
+          <Route path="/try-on" element={<TryOnPage />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </Router>
+    </StaffProvider>
   );
 }
 

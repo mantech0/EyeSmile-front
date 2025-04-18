@@ -1,5 +1,6 @@
 import React from 'react';
 import { Question, Answer } from '../../types/questionnaire';
+import { useStaff } from '../../context/StaffContext';
 
 interface QuestionCardProps {
     question: Question;
@@ -12,6 +13,8 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
     onAnswer, 
     currentAnswers 
 }) => {
+    const { selectedStaff } = useStaff();
+
     const handleOptionSelect = (option: string) => {
         let newSelected: string[];
         if (question.multipleSelect) {
@@ -31,7 +34,21 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
 
     return (
         <div className="question-card">
-            <h3 className="question-text">{question.questionText}</h3>
+            <div className="question-title">
+                {selectedStaff && (
+                    <div className="title-staff-avatar">
+                        <img src={selectedStaff.image} alt={selectedStaff.name} />
+                    </div>
+                )}
+                <div className="title-content">
+                    <h3 className="question-text">{question.questionText}</h3>
+                    {question.multipleSelect && (
+                        <p className="helper-text">
+                            (複数選択可)
+                        </p>
+                    )}
+                </div>
+            </div>
             <div className="options-grid">
                 {question.options.map((option) => (
                     <button
@@ -43,9 +60,6 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                     </button>
                 ))}
             </div>
-            {question.multipleSelect && (
-                <p className="helper-text">※複数選択可能です</p>
-            )}
         </div>
     );
 };

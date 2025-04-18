@@ -125,6 +125,8 @@ export const getGlassesRecommendations = async (
   
   if (isDemo) {
     console.log('デモモードでの実行 - APIをスキップしてデモデータを使用します');
+    // 少し遅延を入れて非同期処理をシミュレート
+    await new Promise(resolve => setTimeout(resolve, 1000));
     return generateDemoRecommendation(faceData, stylePreference);
   }
   
@@ -136,16 +138,23 @@ export const getGlassesRecommendations = async (
       style_preference: stylePreference
     };
     
-    const response = await axios.post(
-      `${API_BASE_URL}/api/v1/recommendations/glasses`,
-      requestData,
-      {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        timeout: 30000 // 30秒のタイムアウト（延長）
-      }
-    );
+    // タイムアウト保護のためPromise.race使用
+    const response = await Promise.race([
+      axios.post(
+        `${API_BASE_URL}/api/v1/recommendations/glasses`,
+        requestData,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          timeout: 8000 // 8秒のタイムアウト
+        }
+      ),
+      // タイムアウト用のPromise
+      new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('手動タイムアウト: 8秒経過')), 8000)
+      )
+    ]);
     
     console.log('メガネ推薦APIレスポンス:', response.data);
     return response.data;
@@ -161,7 +170,16 @@ export const getGlassesRecommendations = async (
       console.error('レスポンスなし (タイムアウトなど):', error.request);
     }
     
+    // デモモードに強制的に切り替える（環境変数を設定）
+    console.log('エラーが発生したため、デモモードに切り替えます');
+    // @ts-ignore: 環境変数を動的に設定
+    import.meta.env.VITE_DEMO_MODE = 'true';
+    
     // フォールバック処理 - デモデータを生成
+    console.log('フォールバック: デモ推薦データを生成します');
+    
+    // 少し遅延を入れてUIのフリーズを防ぐ
+    await new Promise(resolve => setTimeout(resolve, 500));
     return generateDemoRecommendation(faceData, stylePreference);
   }
 };

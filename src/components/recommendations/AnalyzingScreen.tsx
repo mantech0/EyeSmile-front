@@ -65,7 +65,7 @@ const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({
   // 絶対に実行されるべき強制タイマー
   useEffect(() => {
     // 長めのデッドライン - このタイマーは絶対に発火する
-    const finalDeadline = 5000; // 5秒後には必ず次へ進む
+    const finalDeadline = 8000; // 8秒後には必ず次へ進む
     
     console.log(`${finalDeadline}ms後に強制的に次へ進みます`);
     forceTimeoutRef.current = setTimeout(() => {
@@ -73,10 +73,10 @@ const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({
       handleAutoComplete();
     }, finalDeadline);
     
-    // スキップボタンを表示
+    // スキップボタンを表示（すぐに表示）
     const skipButtonTimeout = setTimeout(() => {
       setShowSkipButton(true);
-    }, 2000);
+    }, 800);
     
     return () => {
       if (forceTimeoutRef.current) {
@@ -169,8 +169,8 @@ const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({
         
         {showSkipButton && (
           <Button 
-            variant="text" 
-            size="small"
+            variant="contained" 
+            color="primary"
             onClick={handleSkip}
             sx={{ mt: 2 }}
           >

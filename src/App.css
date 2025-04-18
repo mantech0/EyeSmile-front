@@ -1,6 +1,77 @@
+#app {
+  width: 100vw;
+  max-width: 100vw;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
 .App {
   text-align: center;
-  padding: 2rem;
+  min-height: 100vh;
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+/* アンケート表示時には余白を完全に削除 */
+.App:has(.questionnaire-page) {
+  padding: 0 !important;
+  margin: 0 !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  overflow: hidden !important;
+  left: 0 !important;
+  right: 0 !important;
+}
+
+.App:has(.questionnaire-page) h1 {
+  display: none;
+}
+
+.App:has(.questionnaire-page) .demo-mode-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 100;
+  margin: 0;
+}
+
+/* questionnaire-page内のApp直下の要素をフルサイズに */
+.App > .questionnaire-page {
+  min-height: 100vh;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  max-width: 100%;
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  overflow-x: hidden;
+}
+
+/* アンケート専用スタイル - 開発モード向け */
+@media screen and (min-width: 320px) and (max-width: 430px) {
+  .App:has(.questionnaire-page) {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+  
+  .App > .questionnaire-page {
+    width: 100% !important;
+    max-width: 100% !important;
+    border: none !important;
+    left: 0 !important;
+    right: 0 !important;
+  }
 }
 
 .App h1 {
@@ -13,7 +84,7 @@ button {
   padding: 0.5rem 1rem;
   margin: 1rem;
   cursor: pointer;
-  background-color: #646cff;
+  background-color: #0099cc;
   border: none;
   border-radius: 4px;
   color: white;
@@ -21,7 +92,7 @@ button {
 }
 
 button:hover {
-  background-color: #535bf2;
+  background-color: #007aa3;
 }
 
 p {
@@ -51,8 +122,17 @@ p {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2rem;
-  padding: 2rem;
+  width: 100%;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
 }
 
 .captured-data {
@@ -84,4 +164,36 @@ p {
   display: inline-block;
   margin-bottom: 1rem;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* EyeSmileのヘッダー非表示（アンケート画面用） */
+.App:has(.questionnaire-page) > *:not(.questionnaire-page) {
+  display: none;
+}
+
+/* カメラセクション表示時のスタイル */
+.App:has(.face-camera-container) {
+  padding: 0 !important;
+  margin: 0 !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  overflow: hidden !important;
+  left: 0 !important;
+  right: 0 !important;
+}
+
+.App:has(.face-camera-container) h1 {
+  display: none;
+}
+
+.App:has(.face-camera-container) .demo-mode-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 100;
+  margin: 0;
+}
+
+.App:has(.face-camera-container) > *:not(.camera-section) {
+  display: none;
 } 
