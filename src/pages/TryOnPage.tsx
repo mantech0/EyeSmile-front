@@ -244,7 +244,7 @@ const TryOnPage: React.FC = () => {
       {/* 評価ボタンエリア */}
       <Box sx={{ 
         width: '100%', 
-        padding: '10px', 
+        padding: '8px 5px', 
         backgroundColor: '#f0f9ff',
         display: 'flex',
         alignItems: 'center',
@@ -253,13 +253,25 @@ const TryOnPage: React.FC = () => {
         borderBottom: '1px solid #e0e0e0'
       }}>
         <Box sx={{ textAlign: 'center', width: '100%' }}>
-          <Typography sx={{ marginBottom: '8px', fontSize: '15px', fontWeight: 500 }}>
+          <Typography sx={{ marginBottom: '8px', fontSize: '14px', fontWeight: 500 }}>
             このフレームはいかがですか？
           </Typography>
-          <ButtonGroup variant="contained" size="medium" sx={{ '& .MuiButton-root': { margin: '0 8px', borderRadius: '20px' } }}>
+          <ButtonGroup 
+            variant="contained" 
+            size="small" 
+            sx={{ 
+              '& .MuiButton-root': { 
+                margin: { xs: '0 12px', sm: '0 18px' }, 
+                borderRadius: '20px',
+                fontSize: { xs: '0.65rem', sm: '0.75rem' },
+                padding: { xs: '4px 8px', sm: '6px 10px' },
+                minWidth: { xs: '80px', sm: '90px' }
+              } 
+            }}
+          >
             <Button 
               color="success"
-              startIcon={<ThumbUpIcon />} 
+              startIcon={<ThumbUpIcon sx={{ fontSize: { xs: '0.8rem', sm: '1rem' } }} />} 
               onClick={() => handleRating('いいね！')}
               sx={{ 
                 backgroundColor: userRating === 'いいね！' ? '#2e7d32' : '#287edf',
@@ -270,7 +282,7 @@ const TryOnPage: React.FC = () => {
             </Button>
             <Button 
               color="primary"
-              startIcon={<ThumbsUpDownIcon />} 
+              startIcon={<ThumbsUpDownIcon sx={{ fontSize: { xs: '0.8rem', sm: '1rem' } }} />} 
               onClick={() => handleRating('まあまあ')}
               sx={{ 
                 backgroundColor: userRating === 'まあまあ' ? '#1976d2' : '#287edf',
@@ -281,7 +293,7 @@ const TryOnPage: React.FC = () => {
             </Button>
             <Button 
               color="error"
-              startIcon={<ThumbDownIcon />} 
+              startIcon={<ThumbDownIcon sx={{ fontSize: { xs: '0.8rem', sm: '1rem' } }} />} 
               onClick={() => handleRating('いまいち')}
               sx={{ 
                 backgroundColor: userRating === 'いまいち' ? '#d32f2f' : '#287edf',
@@ -298,7 +310,7 @@ const TryOnPage: React.FC = () => {
       {userRating && (
         <Box sx={{
           width: '100%', 
-          padding: '10px', 
+          padding: '8px 5px', 
           backgroundColor: '#f9f2e0',
           display: 'flex',
           alignItems: 'center',
@@ -308,14 +320,14 @@ const TryOnPage: React.FC = () => {
             display: 'flex', 
             alignItems: 'flex-end',
             width: '100%',
-            maxWidth: '600px',
-            gap: 2
+            maxWidth: { xs: '98%', sm: '600px' },
+            gap: { xs: 1, sm: 2 }
           }}>
             {/* スタッフアバター */}
             <Box 
               sx={{ 
-                width: '60px', 
-                height: '60px', 
+                width: { xs: '45px', sm: '60px' }, 
+                height: { xs: '45px', sm: '60px' }, 
                 borderRadius: '50%', 
                 overflow: 'hidden',
                 border: '2px solid white',
@@ -342,17 +354,17 @@ const TryOnPage: React.FC = () => {
             <Box sx={{ 
               backgroundColor: 'white',
               borderRadius: '12px',
-              padding: '10px 15px',
+              padding: { xs: '8px 10px', sm: '10px 15px' },
               position: 'relative',
               boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
               flex: 1,
               '&:before': {
                 content: '""',
                 position: 'absolute',
-                left: '-10px',
+                left: '-8px',
                 bottom: '15px',
-                width: '20px',
-                height: '20px',
+                width: '16px',
+                height: '16px',
                 backgroundColor: 'white',
                 transform: 'rotate(45deg)',
                 borderRadius: '2px',
@@ -360,7 +372,12 @@ const TryOnPage: React.FC = () => {
                 zIndex: 0
               }
             }}>
-              <Typography sx={{ position: 'relative', zIndex: 1 }}>
+              <Typography sx={{ 
+                position: 'relative', 
+                zIndex: 1,
+                fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                lineHeight: { xs: 1.3, sm: 1.5 }
+              }}>
                 {userRating === 'いいね！' && (
                   selectedStaff && selectedStaff.id === 1 ? 'お似合いです！知的で洗練された雰囲気が出ていますね！' :
                   selectedStaff && selectedStaff.id === 2 ? 'とても素晴らしい選択です。フレームの角度が絶妙ですね。' :
@@ -369,7 +386,7 @@ const TryOnPage: React.FC = () => {
                   'お似合いです！素敵な雰囲気になりますね！'
                 )}
                 {userRating === 'まあまあ' && (
-                  selectedStaff && selectedStaff.id === 1 ? '今かけているアイウェアは、ややなりたいイメージ（おしゃれ）というよりは、ちょっとビジネス寄りに見えるかもしれないですね！' :
+                  selectedStaff && selectedStaff.id === 1 ? '今かけているアイウェアは、ややなりたいイメージよりも、ビジネス寄りに見えるかもしれませんね！' :
                   selectedStaff && selectedStaff.id === 2 ? 'フレームの形は良いですが、もう少し調整が必要かもしれませんね。他のスタイルも試してみましょう。' :
                   selectedStaff && selectedStaff.id === 3 ? 'もう少しカラーバリエーションを試してみると、より魅力的になるかも！' :
                   selectedStaff && selectedStaff.id === 4 ? 'Not bad! ただ他のデザインも試してみる価値はありますよ！' :
