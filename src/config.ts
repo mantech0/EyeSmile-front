@@ -2,7 +2,7 @@
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001';
 
 // フロントエンドのベースURL
-export const FRONTEND_BASE_URL = import.meta.env.VITE_FRONTEND_URL || 'http://localhost:5173';
+export const FRONTEND_BASE_URL = import.meta.env.VITE_FRONTEND_URL || 'テンプルのhttp://localhost:5173';
 
 // 静的画像のURL
 export const STATIC_IMAGES_URL = import.meta.env.VITE_STATIC_IMAGES_URL || '/images/frames';

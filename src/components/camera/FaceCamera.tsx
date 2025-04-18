@@ -33,7 +33,7 @@ const FaceCamera: React.FC<FaceCameraProps> = ({ onCapture }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [measurements, setMeasurements] = useState<FaceMeasurements | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
-  const [capturedMeasurements, setCapturedMeasurements] = useState<FaceMeasurements | null>(null);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
 
   // 2点間の距離を計算
   const calculateDistance = (point1: { x: number; y: number }, point2: { x: number; y: number }): number => {
@@ -103,10 +103,9 @@ const FaceCamera: React.FC<FaceCameraProps> = ({ onCapture }) => {
   const handleCapture = () => {
     if (measurements && canvasRef.current) {
       setIsCapturing(true);
-      // 現在の測定値を保存
-      setCapturedMeasurements(measurements);
       // キャンバスの内容をBase64画像として取得
       const imageData = canvasRef.current.toDataURL('image/jpeg');
+      setCapturedImage(imageData);
       
       if (onCapture && measurements) {
         onCapture(measurements, imageData);
@@ -116,6 +115,10 @@ const FaceCamera: React.FC<FaceCameraProps> = ({ onCapture }) => {
         setIsCapturing(false);
       }, 500);
     }
+  };
+
+  const handleRetake = () => {
+    setCapturedImage(null);
   };
 
   useEffect(() => {
@@ -171,30 +174,16 @@ const FaceCamera: React.FC<FaceCameraProps> = ({ onCapture }) => {
 
           setMeasurements(measurements);
           
-          // ランドマークを描画
-          try {
-            drawConnectors(ctx, landmarks, FaceMesh.FACEMESH_TESSELATION, {
-              color: '#C0C0C070',
-              lineWidth: 1
-            });
-            
-            // 重要な測定ポイントを強調表示
-            const points = [
-              landmarks[447], landmarks[227],  // こめかみ
-              landmarks[133], landmarks[362],  // 目の内角
-              landmarks[168], landmarks[2],    // 鼻の上部と下部
-              landmarks[123], landmarks[147], landmarks[162],  // 左頬
-              landmarks[352], landmarks[377], landmarks[392]   // 右頬
-            ];
-
-            ctx.fillStyle = '#FF0000';
-            points.forEach(point => {
-              ctx.beginPath();
-              ctx.arc(point.x * canvas.width, point.y * canvas.height, 3, 0, 2 * Math.PI);
-              ctx.fill();
-            });
-          } catch (error) {
-            console.error('ランドマーク描画中にエラーが発生しました:', error);
+          // ランドマークを最小限に表示（デバッグ用）
+          if (process.env.NODE_ENV === 'development') {
+            try {
+              drawConnectors(ctx, landmarks, FaceMesh.FACEMESH_TESSELATION, {
+                color: '#C0C0C010',
+                lineWidth: 0.5
+              });
+            } catch (error) {
+              console.error('ランドマーク描画中にエラーが発生しました:', error);
+            }
           }
         }
       });
@@ -245,87 +234,62 @@ const FaceCamera: React.FC<FaceCameraProps> = ({ onCapture }) => {
           height="480"
           className="camera-canvas"
         />
-        <div className="face-guide">
-          <svg width="300" height="400" viewBox="0 0 300 400" className="face-guide-svg">
-            <ellipse
-              cx="150"
-              cy="200"
-              rx="100"
-              ry="140"
-              fill="none"
-              stroke="#646cff"
-              strokeWidth="2"
-              strokeDasharray="5,5"
-            />
-            <line
-              x1="150"
-              y1="60"
-              x2="150"
-              y2="340"
-              stroke="#646cff"
-              strokeWidth="1"
-              strokeDasharray="5,5"
-            />
-            <line
-              x1="50"
-              y1="200"
-              x2="250"
-              y2="200"
-              stroke="#646cff"
-              strokeWidth="1"
-              strokeDasharray="5,5"
-            />
-          </svg>
-        </div>
+        {!capturedImage && (
+          <div className="face-guide">
+            <svg viewBox="0 0 300 400" className="face-guide-svg">
+              {/* 楕円形のガイド */}
+              <ellipse
+                cx="150"
+                cy="200"
+                rx="120"
+                ry="160"
+                fill="none"
+                stroke="#ffffff"
+                strokeWidth="2"
+                strokeDasharray="5,5"
+              />
+              {/* 横線のガイド */}
+              <line
+                x1="30"
+                y1="200"
+                x2="270"
+                y2="200"
+                stroke="#ffffff"
+                strokeWidth="1"
+                strokeDasharray="5,5"
+              />
+            </svg>
+          </div>
+        )}
         <div className={`capture-flash ${isCapturing ? 'active' : ''}`} />
       </div>
 
-      <div className="camera-instructions">
-        <p>顔を点線の枠内に合わせてください</p>
-        <ul>
-          <li>正面を向いて、まっすぐ前を見てください</li>
-          <li>眼鏡をかけている場合は、そのままで構いません</li>
-          <li>髪の毛が顔にかかっていない状態にしてください</li>
-        </ul>
-      </div>
-
       <div className="camera-controls">
-        <button 
-          className="capture-button"
-          onClick={handleCapture}
-          disabled={!measurements}
-        >
-          撮影
-        </button>
-      </div>
-
-      {capturedMeasurements && (
-        <div className="measurements-panel">
-          <h3>測定結果</h3>
-          <div className="measurement-grid">
-            <div className="measurement-item">
-              <span>顔幅:</span>
-              <span>{capturedMeasurements.faceWidth.toFixed(1)}mm</span>
-            </div>
-            <div className="measurement-item">
-              <span>目の距離:</span>
-              <span>{capturedMeasurements.eyeDistance.toFixed(1)}mm</span>
-            </div>
-            <div className="measurement-item">
-              <span>頬の面積:</span>
-              <span>{capturedMeasurements.cheekArea.toFixed(1)}mm²</span>
-            </div>
-            <div className="measurement-item">
-              <span>鼻の高さ:</span>
-              <span>{capturedMeasurements.noseHeight.toFixed(1)}mm</span>
-            </div>
-            <div className="measurement-item">
-              <span>こめかみの位置:</span>
-              <span>{capturedMeasurements.templePosition.toFixed(1)}mm</span>
-            </div>
+        {!capturedImage ? (
+          <button 
+            className="capture-button"
+            onClick={handleCapture}
+            disabled={!measurements}
+          >
+            撮影してください
+          </button>
+        ) : (
+          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <button 
+              className="capture-button"
+              onClick={() => { if (onCapture && measurements) onCapture(measurements, capturedImage); }}
+            >
+              次へ
+            </button>
+            <button 
+              className="alternative-action"
+              onClick={handleRetake}
+            >
+              写真を撮り直す
+            </button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

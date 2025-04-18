@@ -32,15 +32,15 @@ const QuestionnaireContainer: React.FC<QuestionnaireContainerProps> = ({ onCompl
             questionType: 'image',
             questionText: 'どのような印象に見られたいですか？',
             displayOrder: 2,
-            options: ['知的', '活発', '落ち着き', '若々しく', 'クール', 'おしゃれ', 'かっこよく', 'かわいく', 'その他'],
+            options: ['華やか・おしゃれ', 'スタイリッシュ・トレンド感', '知的・クール・落着き', '活発・明るい・親しみやすい', 'その他'],
             multipleSelect: true
         },
         {
             id: 3,
             questionType: 'fashion',
-            questionText: 'どんな服装を普段しますか？',
+            questionText: 'どんな服装を普段しますか？（好きですか？）',
             displayOrder: 3,
-            options: ['カジュアル', 'フォーマル', 'スポーティ', 'モード', 'シンプル', 'ストリート', 'アウトドア', 'その他'],
+            options: ['カジュアル・シンプル', 'フォーマル・モード', 'スポーティ・アウトドア', 'ストリート', 'その他'],
             multipleSelect: true
         },
         {
@@ -48,7 +48,7 @@ const QuestionnaireContainer: React.FC<QuestionnaireContainerProps> = ({ onCompl
             questionType: 'personal_color',
             questionText: 'パーソナルカラーは何色ですか？',
             displayOrder: 4,
-            options: ['Spring（スプリング）', 'Summer（サマー）', 'Autumn（オータム）', 'Winter（ウィンター）', 'わからない'],
+            options: ['Spring', 'Summer', 'Autumn', 'Winter', 'わからない'],
             multipleSelect: false
         }
     ];
@@ -87,39 +87,51 @@ const QuestionnaireContainer: React.FC<QuestionnaireContainerProps> = ({ onCompl
 
     if (isComplete) {
         return (
-            <div className="questionnaire-complete">
-                <h2>ありがとうございました！</h2>
-                <p>あなたに最適なアイウェアをご提案いたします。</p>
+            <div className="questionnaire-page">
+                <div className="ios-header">
+                    iPhone 16 Pro - {currentStep + 1}
+                </div>
+                <div className="questionnaire-container">
+                    <div className="questionnaire-complete">
+                        <h2>ありがとうございました！</h2>
+                        <p>あなたに最適なアイウェアをご提案いたします。</p>
+                    </div>
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="questionnaire-container">
-            <StepIndicator 
-                currentStep={currentStep} 
-                totalSteps={questions.length} 
-            />
-            <QuestionCard
-                question={questions[currentStep]}
-                onAnswer={handleAnswer}
-                currentAnswers={currentAnswers}
-            />
-            {error && <div className="error-message">{error}</div>}
-            <NavigationButtons
-                onNext={() => {
-                    if (currentStep === questions.length - 1) {
-                        handleSubmit();
-                    } else {
-                        setCurrentStep(prev => Math.min(prev + 1, questions.length - 1));
-                    }
-                }}
-                onPrev={() => setCurrentStep(prev => Math.max(prev - 1, 0))}
-                canGoNext={currentStep < questions.length - 1 || (currentStep === questions.length - 1 && currentAnswers.length > 0)}
-                canGoPrev={currentStep > 0}
-                isLastStep={currentStep === questions.length - 1}
-                isSubmitting={isSubmitting}
-            />
+        <div className="questionnaire-page">
+            <div className="ios-header">
+                iPhone 16 Pro - {currentStep + 1}
+            </div>
+            <div className="questionnaire-container">
+                <StepIndicator 
+                    currentStep={currentStep} 
+                    totalSteps={questions.length} 
+                />
+                <QuestionCard
+                    question={questions[currentStep]}
+                    onAnswer={handleAnswer}
+                    currentAnswers={currentAnswers}
+                />
+                {error && <div className="error-message">{error}</div>}
+                <NavigationButtons
+                    onNext={() => {
+                        if (currentStep === questions.length - 1) {
+                            handleSubmit();
+                        } else {
+                            setCurrentStep(prev => Math.min(prev + 1, questions.length - 1));
+                        }
+                    }}
+                    onPrev={() => setCurrentStep(prev => Math.max(prev - 1, 0))}
+                    canGoNext={currentStep < questions.length - 1 || (currentStep === questions.length - 1 && currentAnswers.length > 0)}
+                    canGoPrev={currentStep > 0}
+                    isLastStep={currentStep === questions.length - 1}
+                    isSubmitting={isSubmitting}
+                />
+            </div>
         </div>
     );
 };
