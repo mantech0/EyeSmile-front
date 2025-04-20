@@ -34,6 +34,17 @@ const FaceCamera: React.FC<FaceCameraProps> = ({ onCapture }) => {
   const [measurements, setMeasurements] = useState<FaceMeasurements | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [isCameraReady, setIsCameraReady] = useState(false);
+  const [isIOSDevice, setIsIOSDevice] = useState(false);
+
+  // iOSデバイスかどうかを検出
+  useEffect(() => {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                 (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    setIsIOSDevice(isIOS);
+    console.log('デバイス検出:', isIOS ? 'iOSデバイス' : '非iOSデバイス');
+  }, []);
 
   // 2点間の距離を計算
   const calculateDistance = (point1: { x: number; y: number }, point2: { x: number; y: number }): number => {
@@ -121,20 +132,20 @@ const FaceCamera: React.FC<FaceCameraProps> = ({ onCapture }) => {
     setCapturedImage(null);
   };
 
-  useEffect(() => {
+  // カメラ初期化関数を分離
+  const initializeCamera = async () => {
     if (!videoRef.current || !canvasRef.current) return;
 
-    // グローバルから取得
-    const FaceMesh = window.FaceMesh;
-    const Camera = window.Camera;
-    const drawConnectors = window.drawConnectors;
-
-    if (!FaceMesh || !Camera || !drawConnectors) {
-      console.error('MediaPipeライブラリがグローバルに読み込まれていません');
-      return;
-    }
-
     try {
+      // グローバルから取得
+      const FaceMesh = window.FaceMesh;
+      const Camera = window.Camera;
+      const drawConnectors = window.drawConnectors;
+
+      if (!FaceMesh || !Camera || !drawConnectors) {
+        throw new Error('MediaPipeライブラリがグローバルに読み込まれていません');
+      }
+
       console.log('FaceMeshを初期化しています...');
       const faceMesh = new FaceMesh({
         locateFile: (file: string) => {
@@ -158,7 +169,19 @@ const FaceCamera: React.FC<FaceCameraProps> = ({ onCapture }) => {
         if (!ctx) return;
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // 顔をより大きく表示するために画像を拡大して描画
+        const scale = 1.3; // 拡大係数
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        
+        // 拡大して中央寄りに描画
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.scale(scale, scale);
+        ctx.translate(-centerX, -centerY);
         ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+        ctx.restore();
 
         if (results.multiFaceLandmarks.length > 0) {
           const landmarks = results.multiFaceLandmarks[0];
@@ -177,10 +200,18 @@ const FaceCamera: React.FC<FaceCameraProps> = ({ onCapture }) => {
           // ランドマークを最小限に表示（デバッグ用）
           if (process.env.NODE_ENV === 'development') {
             try {
+              // ランドマークも拡大して描画
+              ctx.save();
+              ctx.translate(centerX, centerY);
+              ctx.scale(scale, scale);
+              ctx.translate(-centerX, -centerY);
+              
               drawConnectors(ctx, landmarks, FaceMesh.FACEMESH_TESSELATION, {
-                color: '#C0C0C010',
+                color: '#C0C0C070',
                 lineWidth: 0.5
               });
+              
+              ctx.restore();
             } catch (error) {
               console.error('ランドマーク描画中にエラーが発生しました:', error);
             }
@@ -188,8 +219,8 @@ const FaceCamera: React.FC<FaceCameraProps> = ({ onCapture }) => {
         }
       });
 
-      console.log('MediaPipe Cameraを初期化しています...');
-      const camera = new Camera(videoRef.current, {
+      // iOS向けのカメラ設定調整
+      let cameraOptions = {
         onFrame: async () => {
           if (videoRef.current) {
             try {
@@ -199,16 +230,48 @@ const FaceCamera: React.FC<FaceCameraProps> = ({ onCapture }) => {
             }
           }
         },
-        width: 640,
-        height: 480
-      });
+        width: 1280, // より高解像度に設定
+        height: 720
+      };
+
+      // MediaPipe Cameraの初期化とiOS向け調整
+      console.log('MediaPipe Cameraを初期化しています...');
+      const camera = new Camera(videoRef.current, cameraOptions);
 
       console.log('カメラを起動しています...');
-      camera.start().then(() => {
+      
+      // カメラが読み込まれたときに設定を調整
+      if (videoRef.current) {
+        // canvasサイズをvideoに合わせる
+        videoRef.current.onloadedmetadata = () => {
+          if (canvasRef.current && videoRef.current) {
+            // ビデオの実際のサイズを取得
+            const videoWidth = videoRef.current.videoWidth;
+            const videoHeight = videoRef.current.videoHeight;
+            
+            console.log(`ビデオサイズ: ${videoWidth}x${videoHeight}`);
+            
+            // キャンバスサイズを更新
+            canvasRef.current.width = videoWidth;
+            canvasRef.current.height = videoHeight;
+            
+            // レスポンシブ対応のためのCSSスタイルはそのまま
+          }
+        };
+      }
+
+      // カメラ起動
+      try {
+        await camera.start();
         console.log('カメラが正常に起動しました');
-      }).catch((error: any) => {
+        setIsCameraReady(true);
+      } catch (error) {
         console.error('カメラの起動に失敗しました:', error);
-      });
+        setCameraError('カメラの起動に失敗しました。アクセス権限を確認してください。');
+        if (isIOSDevice) {
+          setCameraError('iOSデバイスでカメラを起動できませんでした。Safariの設定でカメラアクセスを許可してください。');
+        }
+      }
 
       return () => {
         console.log('カメラを停止しています...');
@@ -217,79 +280,124 @@ const FaceCamera: React.FC<FaceCameraProps> = ({ onCapture }) => {
       };
     } catch (error) {
       console.error('カメラ初期化中にエラーが発生しました:', error);
+      setCameraError(`カメラの初期化中にエラーが発生しました: ${error instanceof Error ? error.message : '不明なエラー'}`);
       return () => {};
     }
-  }, []);
+  };
+
+  // ユーザー操作によるカメラ起動（iOSでの制限対策）
+  const startCamera = () => {
+    console.log('ユーザー操作でカメラを起動します');
+    initializeCamera();
+  };
+
+  // コンポーネントマウント時のセットアップ
+  useEffect(() => {
+    // iOSの場合は自動起動しない
+    if (isIOSDevice) {
+      console.log('iOSデバイスのため、カメラは手動で起動します');
+      return;
+    }
+    
+    // 非iOSの場合は自動起動
+    console.log('非iOSデバイスのため、カメラを自動起動します');
+    initializeCamera();
+    
+    // クリーンアップ関数はinitializeCamera内で返しているものを使用
+  }, [isIOSDevice]);
 
   return (
     <div className="face-camera-container">
-      <div className="camera-view">
-        <video
-          ref={videoRef}
-          style={{ display: 'none' }}
-        />
-        <canvas
-          ref={canvasRef}
-          width="640"
-          height="480"
-          className="camera-canvas"
-        />
-        {!capturedImage && (
-          <div className="face-guide">
-            <svg viewBox="0 0 300 400" className="face-guide-svg">
-              {/* 楕円形のガイド */}
-              <ellipse
-                cx="150"
-                cy="200"
-                rx="120"
-                ry="160"
-                fill="none"
-                stroke="#ffffff"
-                strokeWidth="2"
-                strokeDasharray="5,5"
-              />
-              {/* 横線のガイド */}
-              <line
-                x1="30"
-                y1="200"
-                x2="270"
-                y2="200"
-                stroke="#ffffff"
-                strokeWidth="1"
-                strokeDasharray="5,5"
-              />
-            </svg>
-          </div>
-        )}
-        <div className={`capture-flash ${isCapturing ? 'active' : ''}`} />
-      </div>
-
-      <div className="camera-controls">
-        {!capturedImage ? (
-          <button 
-            className="capture-button"
-            onClick={handleCapture}
-            disabled={!measurements}
-          >
-            撮影してください
+      {cameraError ? (
+        <div className="camera-error">
+          <p>{cameraError}</p>
+          <button className="retry-button" onClick={startCamera}>
+            カメラを再起動
           </button>
-        ) : (
-          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <button 
-              className="capture-button"
-              onClick={() => { if (onCapture && measurements) onCapture(measurements, capturedImage); }}
-            >
-              次へ
-            </button>
-            <button 
-              className="alternative-action"
-              onClick={handleRetake}
-            >
-              写真を撮り直す
-            </button>
+        </div>
+      ) : (
+        <>
+          <div className="camera-view">
+            <video
+              ref={videoRef}
+              style={{ display: 'none' }}
+              playsInline // iOSの自動全画面表示を防止
+            />
+            <canvas
+              ref={canvasRef}
+              width="640"
+              height="480"
+              className="camera-canvas"
+            />
+            {!isCameraReady && isIOSDevice && (
+              <div className="camera-start-overlay">
+                <button 
+                  className="start-camera-button"
+                  onClick={startCamera}
+                >
+                  カメラを起動する
+                </button>
+                <p className="camera-note">※iOSではカメラ起動に許可が必要です</p>
+              </div>
+            )}
+            {!capturedImage && isCameraReady && (
+              <div className="face-guide">
+                <svg viewBox="0 0 300 400" className="face-guide-svg">
+                  {/* 楕円形のガイド - 顔に合わせて拡大 */}
+                  <ellipse
+                    cx="150"
+                    cy="180"
+                    rx="130"
+                    ry="170"
+                    fill="none"
+                    stroke="#ffffff"
+                    strokeWidth="2"
+                    strokeDasharray="5,5"
+                  />
+                  {/* 横線のガイド - 目の高さに合わせる */}
+                  <line
+                    x1="20"
+                    y1="180"
+                    x2="280"
+                    y2="180"
+                    stroke="#ffffff"
+                    strokeWidth="1"
+                    strokeDasharray="5,5"
+                  />
+                </svg>
+              </div>
+            )}
+            <div className={`capture-flash ${isCapturing ? 'active' : ''}`} />
           </div>
-        )}
-      </div>
+
+          <div className="camera-controls">
+            {!capturedImage ? (
+              <button 
+                className="capture-button"
+                onClick={handleCapture}
+                disabled={!measurements || !isCameraReady}
+              >
+                撮影してください
+              </button>
+            ) : (
+              <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <button 
+                  className="capture-button"
+                  onClick={() => { if (onCapture && measurements) onCapture(measurements, capturedImage); }}
+                >
+                  次へ
+                </button>
+                <button 
+                  className="alternative-action"
+                  onClick={handleRetake}
+                >
+                  写真を撮り直す
+                </button>
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 };

@@ -73,7 +73,7 @@ const QuestionnaireContainer: React.FC<QuestionnaireContainerProps> = ({ onCompl
             questionType: 'personal_color',
             questionText: 'パーソナルカラーは何色ですか？',
             displayOrder: 4,
-            options: ['Spring', 'Summer', 'Autumn', 'Winter', 'わからない'],
+            options: ['イエベ（春）', 'ブルベ（夏）', 'イエベ（秋）', 'ブルベ（冬）', 'わからない'],
             multipleSelect: false
         }
     ];
