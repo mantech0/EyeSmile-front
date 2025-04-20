@@ -218,11 +218,18 @@
   .camera-view {
     height: 90vh;
     max-height: 90vh;
+    aspect-ratio: auto;
   }
   
   .face-guide {
-    width: 90%;
-    height: 90%;
+    width: 80%;
+    height: 80%;
+  }
+
+  /* 小さい画面では円を小さく */
+  .face-guide-svg ellipse {
+    rx: 110;
+    ry: 150;
   }
 }
 
@@ -238,5 +245,24 @@
     height: 100%;
     max-height: 100%;
     object-fit: cover;
+  }
+
+  /* iOSデバイスでのガイド調整 */
+  .face-guide {
+    width: 75%;
+    height: 75%;
+  }
+  
+  /* iPhone 12/13 mini (375px) 向け特別対応 */
+  @media screen and (max-width: 375px) {
+    .face-guide {
+      width: 70%;
+      height: 70%;
+    }
+    
+    .face-guide-svg ellipse {
+      rx: 100;
+      ry: 140;
+    }
   }
 } 

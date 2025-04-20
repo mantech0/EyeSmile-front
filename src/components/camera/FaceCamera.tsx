@@ -170,8 +170,18 @@ const FaceCamera: React.FC<FaceCameraProps> = ({ onCapture }) => {
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // 顔をより大きく表示するために画像を拡大して描画
-        const scale = 1.3; // 拡大係数
+        // 画面の幅に基づいて拡大率を調整
+        let scale = 1.3; // デフォルト拡大率
+        
+        // モバイルデバイスの場合は拡大率を小さく
+        const isMobile = window.innerWidth <= 480;
+        if (isMobile) {
+          scale = 1.0; // モバイル向け拡大率
+          console.log('モバイルデバイスを検出: 拡大率を1.0に設定');
+        } else {
+          console.log('標準デバイスを検出: 拡大率を1.3に設定');
+        }
+        
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
         
@@ -317,18 +327,18 @@ const FaceCamera: React.FC<FaceCameraProps> = ({ onCapture }) => {
         </div>
       ) : (
         <>
-          <div className="camera-view">
-            <video
-              ref={videoRef}
-              style={{ display: 'none' }}
+      <div className="camera-view">
+        <video
+          ref={videoRef}
+          style={{ display: 'none' }}
               playsInline // iOSの自動全画面表示を防止
-            />
-            <canvas
-              ref={canvasRef}
-              width="640"
-              height="480"
-              className="camera-canvas"
-            />
+        />
+        <canvas
+          ref={canvasRef}
+          width="640"
+          height="480"
+          className="camera-canvas"
+        />
             {!isCameraReady && isIOSDevice && (
               <div className="camera-start-overlay">
                 <button 
@@ -341,61 +351,62 @@ const FaceCamera: React.FC<FaceCameraProps> = ({ onCapture }) => {
               </div>
             )}
             {!capturedImage && isCameraReady && (
-              <div className="face-guide">
-                <svg viewBox="0 0 300 400" className="face-guide-svg">
+          <div className="face-guide">
+            <svg viewBox="0 0 300 400" className="face-guide-svg">
                   {/* 楕円形のガイド - 顔に合わせて拡大 */}
-                  <ellipse
-                    cx="150"
+              <ellipse
+                cx="150"
                     cy="180"
                     rx="130"
                     ry="170"
-                    fill="none"
-                    stroke="#ffffff"
-                    strokeWidth="2"
-                    strokeDasharray="5,5"
-                  />
+                fill="none"
+                stroke="#ffffff"
+                strokeWidth="2"
+                strokeDasharray="5,5"
+                className="face-guide-ellipse"
+              />
                   {/* 横線のガイド - 目の高さに合わせる */}
-                  <line
+              <line
                     x1="20"
                     y1="180"
                     x2="280"
                     y2="180"
-                    stroke="#ffffff"
-                    strokeWidth="1"
-                    strokeDasharray="5,5"
-                  />
-                </svg>
-              </div>
-            )}
-            <div className={`capture-flash ${isCapturing ? 'active' : ''}`} />
+                stroke="#ffffff"
+                strokeWidth="1"
+                strokeDasharray="5,5"
+              />
+            </svg>
           </div>
+        )}
+        <div className={`capture-flash ${isCapturing ? 'active' : ''}`} />
+      </div>
 
-          <div className="camera-controls">
-            {!capturedImage ? (
-              <button 
-                className="capture-button"
-                onClick={handleCapture}
+      <div className="camera-controls">
+        {!capturedImage ? (
+          <button 
+            className="capture-button"
+            onClick={handleCapture}
                 disabled={!measurements || !isCameraReady}
-              >
-                撮影してください
-              </button>
-            ) : (
-              <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <button 
-                  className="capture-button"
-                  onClick={() => { if (onCapture && measurements) onCapture(measurements, capturedImage); }}
-                >
-                  次へ
-                </button>
-                <button 
-                  className="alternative-action"
-                  onClick={handleRetake}
-                >
-                  写真を撮り直す
-                </button>
-              </div>
-            )}
+          >
+            撮影してください
+          </button>
+        ) : (
+          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <button 
+              className="capture-button"
+              onClick={() => { if (onCapture && measurements) onCapture(measurements, capturedImage); }}
+            >
+              次へ
+            </button>
+            <button 
+              className="alternative-action"
+              onClick={handleRetake}
+            >
+              写真を撮り直す
+            </button>
           </div>
+        )}
+      </div>
         </>
       )}
     </div>
