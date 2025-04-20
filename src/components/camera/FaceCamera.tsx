@@ -181,28 +181,14 @@ const FaceCamera: React.FC<FaceCameraProps> = ({ onCapture }) => {
         // モバイルデバイスの場合は拡大率を小さく
         const isMobile = window.innerWidth <= 480 || isIOSDevice;
         if (isMobile) {
-          scale = 0.7; // iOSデバイス向け拡大率をさらに小さく
-          console.log('モバイルデバイスを検出: 拡大率を0.7に設定');
+          scale = 1.0; // モバイルでも等倍表示に修正
+          console.log('モバイルデバイスを検出: 拡大率を1.0に設定');
         } else {
           console.log('標準デバイスを検出: 拡大率を1.0に設定');
         }
         
-        // 画像を描画
-        if (isMobile) {
-          // モバイルではスケールせずにそのまま描画
-          ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
-        } else {
-          // デスクトップではスケーリングを適用
-          const centerX = canvas.width / 2;
-          const centerY = canvas.height / 2;
-          
-          ctx.save();
-          ctx.translate(centerX, centerY);
-          ctx.scale(scale, scale);
-          ctx.translate(-centerX, -centerY);
-          ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
-          ctx.restore();
-        }
+        // 画像を描画（すべてのデバイスで同じ描画方法を使用）
+        ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
 
         if (results.multiFaceLandmarks.length > 0) {
           const landmarks = results.multiFaceLandmarks[0];
@@ -262,8 +248,8 @@ const FaceCamera: React.FC<FaceCameraProps> = ({ onCapture }) => {
             }
           }
         },
-        width: isIOSDevice ? 640 : 1280, // iOSは解像度を下げる
-        height: isIOSDevice ? 480 : 720
+        width: 1280, // すべてのデバイスで同じ高解像度を使用
+        height: 720
       };
 
       // MediaPipe Cameraの初期化とiOS向け調整
@@ -409,8 +395,8 @@ const FaceCamera: React.FC<FaceCameraProps> = ({ onCapture }) => {
             />
             <canvas
               ref={canvasRef}
-              width="640"
-              height="480"
+              width="1280"
+              height="720"
               className="camera-canvas"
             />
             {!isCameraReady && isIOSDevice && (
