@@ -175,20 +175,28 @@ const FaceCamera: React.FC<FaceCameraProps> = ({ onCapture }) => {
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // 画面の幅に基づいて拡大率を調整
-        let scale = 1.0; // デフォルト拡大率を1.0に下げる
+        // モバイル向けの縮小スケール
+        const scale = isIOSDevice || window.innerWidth <= 480 ? 0.65 : 0.9;
+        console.log(`カメラ画像の拡大率を設定: ${scale}`);
         
-        // モバイルデバイスの場合は拡大率を小さく
-        const isMobile = window.innerWidth <= 480 || isIOSDevice;
-        if (isMobile) {
-          scale = 1.0; // モバイルでも等倍表示に修正
-          console.log('モバイルデバイスを検出: 拡大率を1.0に設定');
-        } else {
-          console.log('標準デバイスを検出: 拡大率を1.0に設定');
-        }
+        // 画像を縮小して中央に描画
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const scaledWidth = canvas.width * scale;
+        const scaledHeight = canvas.height * scale;
+        const offsetX = (canvas.width - scaledWidth) / 2;
+        const offsetY = (canvas.height - scaledHeight) / 2;
         
-        // 画像を描画（すべてのデバイスで同じ描画方法を使用）
-        ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+        // まず背景を塗りつぶし
+        ctx.fillStyle = '#0099cc';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // 縮小された画像を描画
+        ctx.drawImage(
+          results.image, 
+          offsetX, offsetY, 
+          scaledWidth, scaledHeight
+        );
 
         if (results.multiFaceLandmarks.length > 0) {
           const landmarks = results.multiFaceLandmarks[0];
@@ -207,29 +215,19 @@ const FaceCamera: React.FC<FaceCameraProps> = ({ onCapture }) => {
           // ランドマークを最小限に表示（デバッグ用）
           if (process.env.NODE_ENV === 'development') {
             try {
-              // モバイルではスケーリングなしでランドマーク表示
-              if (isMobile) {
-                drawConnectors(ctx, landmarks, FaceMesh.FACEMESH_TESSELATION, {
-                  color: '#C0C0C070',
-                  lineWidth: 0.5
-                });
-              } else {
-                // デスクトップではスケーリングを適用
-                const centerX = canvas.width / 2;
-                const centerY = canvas.height / 2;
-                
-                ctx.save();
-                ctx.translate(centerX, centerY);
-                ctx.scale(scale, scale);
-                ctx.translate(-centerX, -centerY);
-                
-                drawConnectors(ctx, landmarks, FaceMesh.FACEMESH_TESSELATION, {
-                  color: '#C0C0C070',
-                  lineWidth: 0.5
-                });
-                
-                ctx.restore();
-              }
+              // スケールを適用してランドマークを描画
+              const scaledLandmarks = landmarks.map((lm: any) => {
+                return {
+                  x: offsetX / canvas.width + lm.x * scale,
+                  y: offsetY / canvas.height + lm.y * scale,
+                  z: lm.z
+                };
+              });
+              
+              drawConnectors(ctx, scaledLandmarks, FaceMesh.FACEMESH_TESSELATION, {
+                color: '#C0C0C070',
+                lineWidth: 0.5
+              });
             } catch (error) {
               console.error('ランドマーク描画中にエラーが発生しました:', error);
             }
