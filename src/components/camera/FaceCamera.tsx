@@ -37,6 +37,9 @@ const FaceCamera: React.FC<FaceCameraProps> = ({ onCapture }) => {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [isIOSDevice, setIsIOSDevice] = useState(false);
+  // 最大再試行回数を設定
+  const [retryCount, setRetryCount] = useState(0);
+  const MAX_RETRIES = 3;
 
   // iOSデバイスかどうかを検出
   useEffect(() => {
@@ -44,6 +47,8 @@ const FaceCamera: React.FC<FaceCameraProps> = ({ onCapture }) => {
                  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     setIsIOSDevice(isIOS);
     console.log('デバイス検出:', isIOS ? 'iOSデバイス' : '非iOSデバイス');
+    console.log('画面サイズ:', window.innerWidth, 'x', window.innerHeight);
+    console.log('ユーザーエージェント:', navigator.userAgent);
   }, []);
 
   // 2点間の距離を計算
@@ -171,27 +176,33 @@ const FaceCamera: React.FC<FaceCameraProps> = ({ onCapture }) => {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
         // 画面の幅に基づいて拡大率を調整
-        let scale = 1.3; // デフォルト拡大率
+        let scale = 1.0; // デフォルト拡大率を1.0に下げる
         
         // モバイルデバイスの場合は拡大率を小さく
-        const isMobile = window.innerWidth <= 480;
+        const isMobile = window.innerWidth <= 480 || isIOSDevice;
         if (isMobile) {
-          scale = 1.0; // モバイル向け拡大率
-          console.log('モバイルデバイスを検出: 拡大率を1.0に設定');
+          scale = 0.7; // iOSデバイス向け拡大率をさらに小さく
+          console.log('モバイルデバイスを検出: 拡大率を0.7に設定');
         } else {
-          console.log('標準デバイスを検出: 拡大率を1.3に設定');
+          console.log('標準デバイスを検出: 拡大率を1.0に設定');
         }
         
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
-        
-        // 拡大して中央寄りに描画
-        ctx.save();
-        ctx.translate(centerX, centerY);
-        ctx.scale(scale, scale);
-        ctx.translate(-centerX, -centerY);
-        ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
-        ctx.restore();
+        // 画像を描画
+        if (isMobile) {
+          // モバイルではスケールせずにそのまま描画
+          ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+        } else {
+          // デスクトップではスケーリングを適用
+          const centerX = canvas.width / 2;
+          const centerY = canvas.height / 2;
+          
+          ctx.save();
+          ctx.translate(centerX, centerY);
+          ctx.scale(scale, scale);
+          ctx.translate(-centerX, -centerY);
+          ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+          ctx.restore();
+        }
 
         if (results.multiFaceLandmarks.length > 0) {
           const landmarks = results.multiFaceLandmarks[0];
@@ -210,18 +221,29 @@ const FaceCamera: React.FC<FaceCameraProps> = ({ onCapture }) => {
           // ランドマークを最小限に表示（デバッグ用）
           if (process.env.NODE_ENV === 'development') {
             try {
-              // ランドマークも拡大して描画
-              ctx.save();
-              ctx.translate(centerX, centerY);
-              ctx.scale(scale, scale);
-              ctx.translate(-centerX, -centerY);
-              
-              drawConnectors(ctx, landmarks, FaceMesh.FACEMESH_TESSELATION, {
-                color: '#C0C0C070',
-                lineWidth: 0.5
-              });
-              
-              ctx.restore();
+              // モバイルではスケーリングなしでランドマーク表示
+              if (isMobile) {
+                drawConnectors(ctx, landmarks, FaceMesh.FACEMESH_TESSELATION, {
+                  color: '#C0C0C070',
+                  lineWidth: 0.5
+                });
+              } else {
+                // デスクトップではスケーリングを適用
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+                
+                ctx.save();
+                ctx.translate(centerX, centerY);
+                ctx.scale(scale, scale);
+                ctx.translate(-centerX, -centerY);
+                
+                drawConnectors(ctx, landmarks, FaceMesh.FACEMESH_TESSELATION, {
+                  color: '#C0C0C070',
+                  lineWidth: 0.5
+                });
+                
+                ctx.restore();
+              }
             } catch (error) {
               console.error('ランドマーク描画中にエラーが発生しました:', error);
             }
@@ -240,8 +262,8 @@ const FaceCamera: React.FC<FaceCameraProps> = ({ onCapture }) => {
             }
           }
         },
-        width: 1280, // より高解像度に設定
-        height: 720
+        width: isIOSDevice ? 640 : 1280, // iOSは解像度を下げる
+        height: isIOSDevice ? 480 : 720
       };
 
       // MediaPipe Cameraの初期化とiOS向け調整
@@ -264,29 +286,64 @@ const FaceCamera: React.FC<FaceCameraProps> = ({ onCapture }) => {
             // キャンバスサイズを更新
             canvasRef.current.width = videoWidth;
             canvasRef.current.height = videoHeight;
-            
-            // レスポンシブ対応のためのCSSスタイルはそのまま
           }
         };
       }
 
-      // カメラ起動
+      // iOS向けのタイムアウト設定（より長い待機時間）
+      const startTimeout = isIOSDevice ? 5000 : 2000;
+
+      // カメラ起動のプロミス
+      let startPromise;
       try {
-        await camera.start();
+        // iOSの場合は開始前に少し待機
+        if (isIOSDevice) {
+          console.log('iOSデバイス: カメラ起動前に500ms待機');
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+        
+        // カメラ起動
+        startPromise = camera.start();
+        
+        // タイムアウト処理
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('カメラ起動がタイムアウトしました')), startTimeout);
+        });
+        
+        // タイムアウトと競合
+        await Promise.race([startPromise, timeoutPromise]);
+        
         console.log('カメラが正常に起動しました');
         setIsCameraReady(true);
       } catch (error) {
         console.error('カメラの起動に失敗しました:', error);
+        
+        // 再試行（最大MAX_RETRIES回）
+        if (retryCount < MAX_RETRIES) {
+          console.log(`カメラ起動再試行 (${retryCount + 1}/${MAX_RETRIES})`);
+          setRetryCount(prev => prev + 1);
+          
+          // 再試行前に少し待機
+          setTimeout(() => {
+            initializeCamera();
+          }, 1000);
+          return;
+        }
+        
         setCameraError('カメラの起動に失敗しました。アクセス権限を確認してください。');
         if (isIOSDevice) {
-          setCameraError('iOSデバイスでカメラを起動できませんでした。Safariの設定でカメラアクセスを許可してください。');
+          setCameraError('iOSデバイスでカメラを起動できませんでした。設定からカメラアクセスを許可し、ページを再読み込みしてください。');
         }
       }
 
       return () => {
         console.log('カメラを停止しています...');
-        camera.stop();
-        faceMesh.close();
+        try {
+          camera.stop();
+          faceMesh.close();
+        } catch (e) {
+          console.error('カメラ停止中にエラー:', e);
+        }
       };
     } catch (error) {
       console.error('カメラ初期化中にエラーが発生しました:', error);
@@ -298,7 +355,17 @@ const FaceCamera: React.FC<FaceCameraProps> = ({ onCapture }) => {
   // ユーザー操作によるカメラ起動（iOSでの制限対策）
   const startCamera = () => {
     console.log('ユーザー操作でカメラを起動します');
-    initializeCamera();
+    // 再試行カウントをリセット
+    setRetryCount(0);
+    
+    // iOSデバイスの場合は少し待ってから初期化
+    if (isIOSDevice) {
+      setTimeout(() => {
+        initializeCamera();
+      }, 500);
+    } else {
+      initializeCamera();
+    }
   };
 
   // コンポーネントマウント時のセットアップ
@@ -327,18 +394,25 @@ const FaceCamera: React.FC<FaceCameraProps> = ({ onCapture }) => {
         </div>
       ) : (
         <>
-      <div className="camera-view">
-        <video
-          ref={videoRef}
-          style={{ display: 'none' }}
-              playsInline // iOSの自動全画面表示を防止
-        />
-        <canvas
-          ref={canvasRef}
-          width="640"
-          height="480"
-          className="camera-canvas"
-        />
+          <div className="camera-view">
+            <video
+              ref={videoRef}
+              style={{ display: 'none' }}
+              playsInline={true}
+              autoPlay={true}
+              muted={true}
+              onLoadedMetadata={() => {
+                if (videoRef.current) {
+                  videoRef.current.play().catch(e => console.error('自動再生エラー:', e));
+                }
+              }}
+            />
+            <canvas
+              ref={canvasRef}
+              width="640"
+              height="480"
+              className="camera-canvas"
+            />
             {!isCameraReady && isIOSDevice && (
               <div className="camera-start-overlay">
                 <button 
@@ -348,65 +422,66 @@ const FaceCamera: React.FC<FaceCameraProps> = ({ onCapture }) => {
                   カメラを起動する
                 </button>
                 <p className="camera-note">※iOSではカメラ起動に許可が必要です</p>
+                <p className="camera-note">設定からカメラへのアクセスを許可してください</p>
               </div>
             )}
             {!capturedImage && isCameraReady && (
-          <div className="face-guide">
-            <svg viewBox="0 0 300 400" className="face-guide-svg">
+              <div className="face-guide">
+                <svg viewBox="0 0 300 400" className="face-guide-svg">
                   {/* 楕円形のガイド - 顔に合わせて拡大 */}
-              <ellipse
-                cx="150"
+                  <ellipse
+                    cx="150"
                     cy="180"
-                    rx="130"
-                    ry="170"
-                fill="none"
-                stroke="#ffffff"
-                strokeWidth="2"
-                strokeDasharray="5,5"
-                className="face-guide-ellipse"
-              />
+                    rx="100" // より小さく
+                    ry="140" // より小さく
+                    fill="none"
+                    stroke="#ffffff"
+                    strokeWidth="2"
+                    strokeDasharray="5,5"
+                    className="face-guide-ellipse"
+                  />
                   {/* 横線のガイド - 目の高さに合わせる */}
-              <line
-                    x1="20"
+                  <line
+                    x1="50"
                     y1="180"
-                    x2="280"
+                    x2="250"
                     y2="180"
-                stroke="#ffffff"
-                strokeWidth="1"
-                strokeDasharray="5,5"
-              />
-            </svg>
+                    stroke="#ffffff"
+                    strokeWidth="1"
+                    strokeDasharray="5,5"
+                  />
+                </svg>
+              </div>
+            )}
+            <div className={`capture-flash ${isCapturing ? 'active' : ''}`} />
           </div>
-        )}
-        <div className={`capture-flash ${isCapturing ? 'active' : ''}`} />
-      </div>
 
-      <div className="camera-controls">
-        {!capturedImage ? (
-          <button 
-            className="capture-button"
-            onClick={handleCapture}
+          <div className="camera-controls">
+            {!capturedImage ? (
+              <button 
+                className="capture-button"
+                onClick={handleCapture}
                 disabled={!measurements || !isCameraReady}
-          >
-            撮影してください
-          </button>
-        ) : (
-          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <button 
-              className="capture-button"
-              onClick={() => { if (onCapture && measurements) onCapture(measurements, capturedImage); }}
-            >
-              次へ
-            </button>
-            <button 
-              className="alternative-action"
-              onClick={handleRetake}
-            >
-              写真を撮り直す
-            </button>
+              >
+                撮影してください
+              </button>
+            ) : (
+              <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <button 
+                  className="capture-button"
+                  onClick={() => { if (onCapture && measurements) onCapture(measurements, capturedImage); }}
+                >
+                  次へ
+                </button>
+                <button 
+                  className="alternative-action"
+                  onClick={handleRetake}
+                >
+                  写真を撮り直す
+                </button>
+              </div>
+            )}
           </div>
-        )}
-      </div>
         </>
       )}
     </div>
