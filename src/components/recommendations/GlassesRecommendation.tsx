@@ -148,16 +148,16 @@ const GlassesRecommendation: React.FC<GlassesRecommendationProps> = ({
       // 固定の画像パスを使用（テスト用）
       const imagePath = '/images/frames-notempel/ZJ191007_14F1_3.png';
       const imagePathEncoded = encodeURIComponent(imagePath);
-      
-      console.log('試着ページへ遷移します:', {
-        frameId,
-        brand,
-        name,
+    
+    console.log('試着ページへ遷移します:', {
+      frameId,
+      brand,
+      name,
         imagePath
-      });
-      
-      // URLパラメータを使って直接遷移
-      window.location.href = `/try-on?frameId=${frameId}&name=${name}&brand=${brand}&image=${imagePathEncoded}`;
+    });
+    
+    // URLパラメータを使って直接遷移
+    window.location.href = `/try-on?frameId=${frameId}&name=${name}&brand=${brand}&image=${imagePathEncoded}`;
     } catch (error) {
       console.error('試着ページへの遷移中にエラーが発生しました:', error);
     }

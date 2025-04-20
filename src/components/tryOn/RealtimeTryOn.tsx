@@ -181,7 +181,7 @@ const RealtimeTryOn: React.FC<RealtimeTryOnProps> = ({
             glassesImageRef.current = img;
             setImageLoaded(true);
             setImageError(null);
-          };
+        };
         
         processedImg.src = tempCanvas.toDataURL('image/png');
         } catch (pixelError) {
@@ -567,9 +567,9 @@ const RealtimeTryOn: React.FC<RealtimeTryOnProps> = ({
               
               // 目の周りのランドマークをハイライト
               [leftEyeOuter, leftEyeInner, rightEyeInner, rightEyeOuter].forEach(point => {
-                ctx.beginPath();
+              ctx.beginPath();
                 ctx.arc(point.x * canvasWidth, point.y * canvasHeight, 2, 0, 2 * Math.PI);
-                ctx.fill();
+              ctx.fill();
               });
               
               // 目を結ぶ線
@@ -907,7 +907,7 @@ const RealtimeTryOn: React.FC<RealtimeTryOnProps> = ({
         <Box
           sx={{
             position: 'relative',
-            width: '100%', 
+            width: '100%',
             maxWidth: '100%',
             height: '85vh',
             maxHeight: '100%',
@@ -937,6 +937,7 @@ const RealtimeTryOn: React.FC<RealtimeTryOnProps> = ({
           />
           <canvas
             ref={canvasRef}
+            className="camera-canvas"
             style={{
               width: '100%',
               height: '100%',
@@ -1091,12 +1092,12 @@ const RealtimeTryOn: React.FC<RealtimeTryOnProps> = ({
             </Box>
             
             {/* リセットボタン */}
-            <Button 
-              variant="contained" 
+              <Button
+                variant="contained"
               color="primary" 
-              size="small" 
-              onClick={handleReset}
-              sx={{ 
+                size="small"
+                onClick={handleReset}
+                sx={{ 
                 alignSelf: 'center', 
                 width: 'auto', 
                 mt: 0.5,
@@ -1104,13 +1105,13 @@ const RealtimeTryOn: React.FC<RealtimeTryOnProps> = ({
                 fontSize: '0.7rem',
                 padding: '4px 10px',
                 backgroundColor: 'rgba(25, 118, 210, 0.8)',
-                '&:hover': {
+                  '&:hover': {
                   backgroundColor: 'rgba(25, 118, 210, 1)'
-                }
-              }}
-            >
-              調整をリセット
-            </Button>
+                  }
+                }}
+              >
+                調整をリセット
+              </Button>
           </Box>
         </Box>
       )}
