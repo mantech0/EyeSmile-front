@@ -1,0 +1,111 @@
+# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
+# More GitHub Actions for Azure: https://github.com/Azure/actions
+
+name: Build and deploy Node.js app to Azure Web App - eyesmile-frontend
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read #This is required for actions/checkout
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js version
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20.x'
+
+      - name: npm install and build
+        run: |
+          npm install
+          npm run build
+        env:
+          VITE_API_BASE_URL: https://eyesmile-backend-csg6e5dpgch6ccge.eastasia-01.azurewebsites.net
+
+      - name: Create simple Express server
+        run: |
+          cd dist
+          cat > server.js << 'EOF'
+          const express = require('express');
+          const path = require('path');
+          
+          const app = express();
+          const port = process.env.PORT || 8080;
+          
+          // Serve static files
+          app.use(express.static('.'));
+          
+          // Handle SPA routing
+          app.get('*', (req, res) => {
+            res.sendFile(path.join(__dirname, 'index.html'));
+          });
+          
+          app.listen(port, () => {
+            console.log(`Server running on port ${port}`);
+          });
+          EOF
+          
+          cat > package.json << 'EOF'
+          {
+            "name": "eyesmile-frontend-deploy",
+            "version": "1.0.0",
+            "scripts": {
+              "start": "node server.js"
+            },
+            "dependencies": {
+              "express": "^4.18.2"
+            }
+          }
+          EOF
+          
+          npm install --production
+
+      - name: Zip artifact for deployment
+        run: |
+          cd dist
+          zip -r ../release.zip .
+
+      - name: Upload artifact for deployment job
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-app
+          path: release.zip
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      id-token: write #This is required for requesting the JWT
+      contents: read #This is required for actions/checkout
+
+    steps:
+      - name: Download artifact from build job
+        uses: actions/download-artifact@v4
+        with:
+          name: node-app
+
+      - name: Unzip artifact for deployment
+        run: unzip release.zip
+      
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_DBABA5C35EAC4E749B31F9042E9C1B81 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_55AE0B7FB0E54FD58E19D655AF5F73CF }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_B2D8B764A9A24C7182FEF18E2EA737F8 }}
+
+      - name: 'Deploy to Azure Web App'
+        id: deploy-to-webapp
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: 'eyesmile-frontend'
+          slot-name: 'Production'
+          package: .

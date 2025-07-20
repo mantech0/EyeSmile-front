@@ -1,0 +1,894 @@
+import React, { useEffect, useRef, useState } from 'react';
+import { Box, CircularProgress, Typography, Slider, Button } from '@mui/material';
+
+// グローバル変数の型定義
+declare global {
+  interface Window {
+    _debug: {
+      glassesImage: HTMLImageElement | null;
+      videoElement: HTMLVideoElement | null;
+      canvasElement: HTMLCanvasElement | null;
+      imageLoaded: boolean;
+      frameImage: string;
+    };
+    FaceMesh: any;
+    Camera: any;
+  }
+}
+
+// グローバルデバッグオブジェクトを初期化
+if (typeof window !== 'undefined') {
+  window._debug = window._debug || {
+    glassesImage: null,
+    videoElement: null,
+    canvasElement: null,
+    imageLoaded: false,
+    frameImage: ''
+  };
+}
+
+interface RealtimeTryOnProps {
+  selectedGlasses: string | null;
+  frameImage: string;
+  loading: boolean;
+  onLoad?: () => void;
+  onError?: (error: string) => void;
+}
+
+const RealtimeTryOn: React.FC<RealtimeTryOnProps> = ({
+  selectedGlasses,
+  frameImage,
+  loading,
+  onLoad,
+  onError
+}) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [faceDetected, setFaceDetected] = useState(false);
+  const glassesImageRef = useRef<HTMLImageElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const animationRef = useRef<number | null>(null);
+  const faceMeshRef = useRef<any>(null);
+  
+  // フレーム調整用の状態
+  const [frameSize, setFrameSize] = useState(0.8);
+  const [frameOffsetY, setFrameOffsetY] = useState(0.45);
+  const [frameOffsetX, setFrameOffsetX] = useState(0.0);
+  
+  // 顔検出用の変数
+  const lastFacePositionRef = useRef({
+    x: 0, 
+    y: 0, 
+    eyeDistance: 0, 
+    lastDetection: 0
+  });
+
+  // フレーム画像のロード
+  useEffect(() => {
+    if (!frameImage) return;
+    
+    console.log('フレーム画像の読み込み開始:', frameImage);
+    
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    
+    img.onload = () => {
+      console.log('フレーム画像の読み込み完了:', img.width, 'x', img.height);
+      
+      try {
+        // 透明化処理
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = img.width;
+        tempCanvas.height = img.height;
+        
+        const tempCtx = tempCanvas.getContext('2d', { alpha: true });
+        if (!tempCtx) {
+          throw new Error('キャンバスコンテキストの取得に失敗しました');
+        }
+        
+        tempCtx.drawImage(img, 0, 0);
+        
+        const imageData = tempCtx.getImageData(0, 0, img.width, img.height);
+        const data = imageData.data;
+        
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+          
+          if (r > 240 && g > 240 && b > 240) {
+            data[i + 3] = 0;
+          } else if (r > 200 && g > 200 && b > 200) {
+            data[i + 3] = 128;
+          }
+        }
+        
+        tempCtx.putImageData(imageData, 0, 0);
+        
+        const processedImg = new Image();
+        processedImg.crossOrigin = 'anonymous';
+        processedImg.onload = () => {
+          glassesImageRef.current = processedImg;
+          setImageLoaded(true);
+          setImageError(null);
+          
+          if (typeof window !== 'undefined') {
+            window._debug.glassesImage = processedImg;
+            window._debug.imageLoaded = true;
+            window._debug.frameImage = frameImage;
+          }
+        };
+        
+        processedImg.src = tempCanvas.toDataURL('image/png');
+      } catch (error) {
+        console.error('画像透明化処理エラー:', error);
+        glassesImageRef.current = img;
+        setImageLoaded(true);
+        setImageError(null);
+        
+        if (typeof window !== 'undefined') {
+          window._debug.glassesImage = img;
+          window._debug.imageLoaded = true;
+          window._debug.frameImage = frameImage;
+        }
+      }
+    };
+    
+    img.onerror = () => {
+      console.error('フレーム画像の読み込みに失敗しました:', frameImage);
+      const errorMessage = 'フレーム画像の読み込みに失敗しました';
+      setImageError(errorMessage);
+      setImageLoaded(false);
+      glassesImageRef.current = null;
+      
+      if (onError) {
+        onError(errorMessage);
+      }
+    };
+    
+    img.src = frameImage;
+    
+    return () => {
+      img.onload = null;
+      img.onerror = null;
+    };
+  }, [frameImage, onError]);
+
+  // MediaPipeスクリプトのロード
+  useEffect(() => {
+    // すでにロードされている場合はスキップ
+    if (window.FaceMesh && window.Camera) {
+      console.log('MediaPipeはすでにロードされています');
+      return;
+    }
+    
+    console.log('MediaPipe スクリプトを読み込み中...');
+    
+    // スクリプトをロードする関数
+    const loadScript = (src: string, id: string): Promise<void> => {
+      return new Promise((resolve, reject) => {
+        // 既存のスクリプトを確認
+        const existingScript = document.getElementById(id);
+        if (existingScript) {
+          console.log(`スクリプト ${id} はすでにロードされています`);
+          resolve();
+          return;
+        }
+        
+        // 新しいスクリプトを作成
+        const script = document.createElement('script');
+        script.src = src;
+        script.id = id;
+        script.async = true;
+        
+        script.onload = () => {
+          console.log(`スクリプト ${id} のロードに成功しました`);
+          resolve();
+        };
+        
+        script.onerror = (error) => {
+          console.error(`スクリプト ${id} のロードに失敗しました:`, error);
+          reject(new Error(`スクリプト ${id} のロードに失敗しました`));
+        };
+        
+        document.head.appendChild(script);
+      });
+    };
+    
+    // スクリプトを順番にロード
+    const loadMediaPipeScripts = async () => {
+      try {
+        await loadScript(
+          'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/face_mesh.js', 
+          'mediapipe-facemesh'
+        );
+        
+        await loadScript(
+          'https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1632432234/camera_utils.js', 
+          'mediapipe-camera'
+        );
+        
+        console.log('すべてのMediaPipeスクリプトのロードが完了しました');
+      } catch (error) {
+        console.error('MediaPipeスクリプトのロード中にエラーが発生しました:', error);
+        if (onError) {
+          onError('カメラ初期化に必要なスクリプトのロードに失敗しました');
+        }
+      }
+    };
+    
+    loadMediaPipeScripts();
+  }, [onError]);
+
+  // カメラの初期化とフレーム描画
+  useEffect(() => {
+    // カメラとMediaPipeが初期化済みかどうかのチェック
+    const checkMediaPipeLoaded = () => {
+      return !!(window.FaceMesh && window.Camera);
+    };
+    
+    let checkInterval: number | null = null;
+    let attempts = 0;
+    const maxAttempts = 20; // 最大10秒待機
+    
+    async function setupCamera() {
+      if (!videoRef.current) {
+        console.error('videoRef.currentがnullです - カメラ初期化ができません');
+        setCameraError('カメラの初期化に失敗しました');
+        if (onError) onError('カメラの初期化に失敗しました');
+        return;
+      }
+      
+      // MediaPipeがロードされるまで待機
+      if (!checkMediaPipeLoaded()) {
+        console.log('MediaPipeのロードを待機しています...');
+        
+        checkInterval = window.setInterval(() => {
+          attempts++;
+          console.log(`MediaPipeロード確認: ${attempts}回目`);
+          
+          if (checkMediaPipeLoaded()) {
+            console.log('MediaPipeのロードが完了しました');
+            window.clearInterval(checkInterval!);
+            initCameraWithMediaPipe();
+          } else if (attempts >= maxAttempts) {
+            console.error('MediaPipeのロードがタイムアウトしました');
+            window.clearInterval(checkInterval!);
+            setCameraError('カメラシステムの初期化がタイムアウトしました');
+            if (onError) onError('カメラシステムの初期化に失敗しました - タイムアウト');
+          }
+        }, 500);
+        return;
+      }
+      
+      initCameraWithMediaPipe();
+    }
+    
+    async function initCameraWithMediaPipe() {
+      try {
+        console.log('カメラとMediaPipeの初期化を開始...');
+        
+        // videoRefの存在を再確認
+        if (!videoRef.current) {
+          console.error('videoRef.currentがnullです - 初期化中止');
+          setCameraError('カメラの初期化に失敗しました');
+          if (onError) onError('カメラの初期化に失敗しました');
+          return;
+        }
+        
+        try {
+          // カメラストリームの取得
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+              facingMode: 'user',
+            },
+            audio: false
+          });
+          
+          console.log('カメラストリームを取得しました');
+          
+          // videoRefの存在を再確認
+          if (!videoRef.current) {
+            console.error('videoRef.currentがnullになりました (ストリーム取得後)');
+            stream.getTracks().forEach(track => track.stop());
+            setCameraError('カメラの初期化に失敗しました');
+            if (onError) onError('カメラの初期化に失敗しました');
+            return;
+          }
+          
+          videoRef.current.srcObject = stream;
+          streamRef.current = stream;
+          
+          console.log('ビデオ要素にストリームを設定しました');
+          
+          videoRef.current.onloadedmetadata = () => {
+            console.log('ビデオメタデータがロードされました');
+            
+            if (!videoRef.current) {
+              console.error('videoRef.currentがnullです (onloadedmetadata)');
+              return;
+            }
+            
+            videoRef.current.play()
+              .then(() => {
+                console.log('カメラストリームの再生を開始しました');
+                setCameraReady(true);
+                
+                if (canvasRef.current && videoRef.current) {
+                  // キャンバスのサイズを設定
+                  canvasRef.current.width = videoRef.current.videoWidth;
+                  canvasRef.current.height = videoRef.current.videoHeight;
+                  
+                  console.log(`キャンバスサイズを設定: ${canvasRef.current.width}x${canvasRef.current.height}`);
+                  
+                  // デバッグ用のグローバル変数を設定
+                  if (typeof window !== 'undefined') {
+                    window._debug.videoElement = videoRef.current;
+                    window._debug.canvasElement = canvasRef.current;
+                  }
+                  
+                  // FaceMeshの初期化
+                  initFaceMesh();
+                  
+                  // カメラが正常に初期化されたらonLoad呼び出し
+                  if (onLoad) {
+                    onLoad();
+                  }
+                } else {
+                  console.error('canvasRef.currentまたはvideoRef.currentがnullです');
+                  setCameraError('キャンバスの初期化に失敗しました');
+                  if (onError) onError('キャンバスの初期化に失敗しました');
+                }
+              })
+              .catch(error => {
+                console.error('ビデオの再生に失敗:', error);
+                setCameraError('カメラの初期化に失敗しました');
+                if (onError) {
+                  onError('カメラの初期化に失敗しました');
+                }
+              });
+          };
+          
+          videoRef.current.onerror = (e) => {
+            console.error('ビデオ要素でエラーが発生しました:', e);
+            setCameraError('カメラの初期化に失敗しました');
+            if (onError) onError('カメラの初期化に失敗しました');
+          };
+        } catch (cameraError) {
+          console.error('カメラへのアクセスに失敗:', cameraError);
+          const errorMessage = 'カメラへのアクセスに失敗しました。ブラウザの設定でカメラへのアクセスを許可してください。';
+          setCameraError(errorMessage);
+          if (onError) {
+            onError(errorMessage);
+          }
+        }
+      } catch (error) {
+        console.error('カメラ初期化中の一般エラー:', error);
+        setCameraError('カメラの初期化中にエラーが発生しました');
+        if (onError) {
+          onError('カメラの初期化中にエラーが発生しました');
+        }
+      }
+    }
+    
+    function initFaceMesh() {
+      if (!window.FaceMesh || !window.Camera) {
+        console.error('MediaPipeがロードされていません');
+        return;
+      }
+      
+      try {
+        // FaceMeshの初期化
+        const faceMesh = new window.FaceMesh({
+          locateFile: (file: string) => {
+            return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/${file}`;
+          }
+        });
+        
+        // オプション設定
+        faceMesh.setOptions({
+          maxNumFaces: 1,
+          refineLandmarks: true,
+          minDetectionConfidence: 0.5,
+          minTrackingConfidence: 0.5
+        });
+        
+        // 顔ランドマーク検出の結果を処理
+        faceMesh.onResults((results: any) => {
+          if (!canvasRef.current || !videoRef.current || !glassesImageRef.current) return;
+          
+          const canvas = canvasRef.current;
+          const ctx = canvas.getContext('2d');
+          
+          if (!ctx) return;
+          
+          // キャンバスをクリア
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          
+          // ビデオフレームを描画
+          ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+          
+          // 顔が検出された場合
+          if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+            const landmarks = results.multiFaceLandmarks[0];
+            
+            // 顔検出状態を更新
+            setFaceDetected(true);
+            
+            // 目のランドマークインデックス
+            // 左目の外側
+            const leftEyeOuter = landmarks[263];
+            // 左目の内側 
+            const leftEyeInner = landmarks[362];
+            // 右目の内側
+            const rightEyeInner = landmarks[133];
+            // 右目の外側
+            const rightEyeOuter = landmarks[33];
+            
+            // 顔の幅のランドマーク（左右の頬）
+            const leftCheek = landmarks[234];  // 左頬
+            const rightCheek = landmarks[454]; // 右頬
+            
+            // 左右の目の位置を計算（ビデオが反転している場合の調整）
+            // MediaPipeの座標系（0〜1）からキャンバスの座標系に変換
+            // ビデオが左右反転表示されているので、フレームも整合させるために変換が必要
+            const leftEyeX = leftEyeOuter.x * canvas.width;
+            const leftEyeY = leftEyeOuter.y * canvas.height;
+            const rightEyeX = rightEyeOuter.x * canvas.width;
+            const rightEyeY = rightEyeOuter.y * canvas.height;
+            
+            // 顔の幅を計算
+            const leftCheekX = leftCheek.x * canvas.width;
+            const rightCheekX = rightCheek.x * canvas.width;
+            const faceWidth = Math.abs(rightCheekX - leftCheekX);
+            
+            // 目の間の距離を計算
+            const eyeDistance = Math.sqrt(
+              Math.pow(rightEyeX - leftEyeX, 2) + 
+              Math.pow(rightEyeY - leftEyeY, 2)
+            );
+            
+            // 目の中心を計算
+            const eyesCenterX = (leftEyeX + rightEyeX) / 2;
+            const eyesCenterY = (leftEyeY + rightEyeY) / 2;
+            
+            // 顔の中心を計算
+            const faceCenterX = (leftCheekX + rightCheekX) / 2;
+            
+            // 顔の位置情報を更新
+            lastFacePositionRef.current = {
+              x: faceCenterX,
+              y: eyesCenterY,
+              eyeDistance: eyeDistance,
+              lastDetection: Date.now()
+            };
+            
+            // フレームのサイズを計算（顔の幅に基づいて調整）
+            const frameWidth = faceWidth * 1.1 * frameSize; 
+            const aspectRatio = glassesImageRef.current.height / glassesImageRef.current.width;
+            const frameHeight = frameWidth * aspectRatio;
+            
+            // 位置調整（顔の中心を基準に）
+            const frameY = eyesCenterY - (frameHeight * frameOffsetY);
+            const frameX = faceCenterX - (frameWidth / 2) + (frameOffsetX * frameWidth * 0.1);
+            
+            // フレームを描画
+            ctx.drawImage(
+              glassesImageRef.current,
+              frameX,
+              frameY,
+              frameWidth,
+              frameHeight
+            );
+            
+            // デバッグ表示（開発環境のみ）
+            if (process.env.NODE_ENV === 'development') {
+              // 目のランドマークを表示
+              ctx.fillStyle = 'red';
+              ctx.beginPath();
+              ctx.arc(leftEyeX, leftEyeY, 3, 0, 2 * Math.PI);
+              ctx.fill();
+              
+              ctx.beginPath();
+              ctx.arc(rightEyeX, rightEyeY, 3, 0, 2 * Math.PI);
+              ctx.fill();
+              
+              // フレーム領域を表示
+              ctx.strokeStyle = 'rgba(0, 255, 0, 0.5)';
+              ctx.strokeRect(frameX, frameY, frameWidth, frameHeight);
+              
+              // 情報表示
+              ctx.fillStyle = 'white';
+              ctx.font = '12px Arial';
+              ctx.fillText(`顔検出: あり`, 10, 20);
+              ctx.fillText(`目の距離: ${eyeDistance.toFixed(0)}px`, 10, 40);
+              ctx.fillText(`サイズ: ${frameSize.toFixed(2)}`, 10, 60);
+            }
+          } else {
+            // 顔が検出されなかった場合
+            const { x, y, eyeDistance, lastDetection } = lastFacePositionRef.current;
+            
+            // 最後の検出から3秒以上経った場合
+            if (Date.now() - lastDetection > 3000) {
+              setFaceDetected(false);
+              
+              // 情報表示
+              if (process.env.NODE_ENV === 'development') {
+                ctx.fillStyle = 'white';
+                ctx.font = '12px Arial';
+                ctx.fillText(`顔検出: なし`, 10, 20);
+              }
+              
+              // 顔検出がなくても、以前の位置にフレームを表示
+              if (eyeDistance > 0 && x > 0 && y > 0) {
+                // 顔の幅とアスペクト比で計算
+                const frameWidth = eyeDistance * 2.0 * frameSize;
+                const aspectRatio = glassesImageRef.current.height / glassesImageRef.current.width;
+                const frameHeight = frameWidth * aspectRatio;
+                
+                const frameY = y - (frameHeight * frameOffsetY);
+                const frameX = x - (frameWidth / 2) + (frameOffsetX * frameWidth * 0.1);
+                
+                ctx.drawImage(
+                  glassesImageRef.current,
+                  frameX,
+                  frameY,
+                  frameWidth,
+                  frameHeight
+                );
+              }
+            } else {
+              // 短時間の検出失敗なら前回の位置を維持
+              setFaceDetected(true);
+              
+              if (eyeDistance > 0 && x > 0 && y > 0) {
+                // 顔の幅とアスペクト比で計算
+                const frameWidth = eyeDistance * 2.0 * frameSize;
+                const aspectRatio = glassesImageRef.current.height / glassesImageRef.current.width;
+                const frameHeight = frameWidth * aspectRatio;
+                
+                const frameY = y - (frameHeight * frameOffsetY);
+                const frameX = x - (frameWidth / 2) + (frameOffsetX * frameWidth * 0.1);
+                
+                ctx.drawImage(
+                  glassesImageRef.current,
+                  frameX,
+                  frameY,
+                  frameWidth,
+                  frameHeight
+                );
+                
+                // デバッグ表示
+                if (process.env.NODE_ENV === 'development') {
+                  ctx.fillStyle = 'white';
+                  ctx.font = '12px Arial';
+                  ctx.fillText(`顔検出: 一時的にロスト`, 10, 20);
+                  ctx.fillText(`目の距離: ${eyeDistance.toFixed(0)}px`, 10, 40);
+                  ctx.fillText(`サイズ: ${frameSize.toFixed(2)}`, 10, 60);
+                }
+              }
+            }
+          }
+        });
+        
+        faceMeshRef.current = faceMesh;
+        
+        // FaceMeshでカメラ映像を処理
+        const camera = new window.Camera(videoRef.current, {
+          onFrame: async () => {
+            if (faceMeshRef.current && videoRef.current) {
+              await faceMeshRef.current.send({ image: videoRef.current });
+            }
+          },
+          width: 1280,
+          height: 720
+        });
+        
+        camera.start().catch((error: Error) => {
+          console.error('MediaPipe Cameraの起動に失敗:', error);
+          setCameraError('顔検出システムの初期化に失敗しました');
+        });
+      } catch (error) {
+        console.error('FaceMeshの初期化に失敗:', error);
+        setCameraError('顔検出システムの初期化に失敗しました');
+        
+        // FaceMeshが失敗した場合、代替の描画方法を使用
+        startFallbackDrawing();
+      }
+    }
+    
+    // FaceMeshが使えない場合のフォールバック描画方法
+    function startFallbackDrawing() {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+      
+      function drawLoop() {
+        if (!canvasRef.current || !videoRef.current || !glassesImageRef.current) {
+          animationRef.current = requestAnimationFrame(drawLoop);
+          return;
+        }
+        
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        
+        if (!ctx) {
+          animationRef.current = requestAnimationFrame(drawLoop);
+          return;
+        }
+        
+        // キャンバスをクリア
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // ビデオを描画
+        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+        
+        // 中心位置
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height * 0.4;
+        
+        // メガネのサイズを計算
+        const frameWidth = canvas.width * 0.3 * frameSize;
+        const aspectRatio = glassesImageRef.current.height / glassesImageRef.current.width;
+        const frameHeight = frameWidth * aspectRatio;
+        
+        // 位置調整
+        const frameX = centerX - (frameWidth / 2) + (frameOffsetX * frameWidth * 0.1);
+        const frameY = centerY - (frameHeight * frameOffsetY);
+        
+        // フレームを描画
+        ctx.drawImage(
+          glassesImageRef.current,
+          frameX,
+          frameY,
+          frameWidth,
+          frameHeight
+        );
+        
+        // 次のフレームをリクエスト
+        animationRef.current = requestAnimationFrame(drawLoop);
+      }
+      
+      // 描画ループを開始
+      animationRef.current = requestAnimationFrame(drawLoop);
+    }
+    
+    // カメラ初期化を開始
+    setupCamera();
+    
+    // クリーンアップ関数
+    return () => {
+      if (checkInterval) {
+        clearInterval(checkInterval);
+      }
+      
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+      
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+      
+      if (faceMeshRef.current) {
+        try {
+          faceMeshRef.current.close();
+        } catch (error) {
+          console.error('FaceMeshクリーンアップエラー:', error);
+        }
+      }
+    };
+  }, [frameSize, frameOffsetY, frameOffsetX]);
+
+  // スライダーのハンドラ
+  const handleSizeChange = (event: Event, newValue: number | number[]) => {
+    setFrameSize(newValue as number);
+  };
+
+  const handleOffsetYChange = (event: Event, newValue: number | number[]) => {
+    setFrameOffsetY(newValue as number);
+  };
+
+  const handleOffsetXChange = (event: Event, newValue: number | number[]) => {
+    setFrameOffsetX(newValue as number);
+  };
+
+  // リセットボタンをクリックした時の処理
+  const handleReset = () => {
+    // ディスプレイの大きさに応じてデフォルト値を調整
+    let defaultSize = 0.8;
+    if (canvasRef.current) {
+      const width = canvasRef.current.width;
+      if (width < 600) {
+        // モバイル向け
+        defaultSize = 0.85;
+      } else if (width > 1200) {
+        // 大画面向け
+        defaultSize = 0.75;
+      }
+    }
+    
+    setFrameSize(defaultSize);
+    setFrameOffsetY(0.45);
+    setFrameOffsetX(0.0);
+  };
+
+  return (
+    <Box
+      sx={{
+        position: 'relative',
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      {loading && <CircularProgress />}
+      
+      {cameraError && (
+        <Typography color="error" variant="h6" align="center">
+          {cameraError}
+        </Typography>
+      )}
+      
+      {imageError && (
+        <Typography color="error" variant="h6" align="center">
+          {imageError}
+        </Typography>
+      )}
+      
+      {!cameraError && !imageError && (
+        <Box
+          sx={{
+            position: 'relative',
+            width: '100%',
+            maxWidth: '1000px',
+            height: '80vh',
+            maxHeight: '1000px',
+            margin: '0 auto',
+            overflow: 'hidden',
+            borderRadius: '8px',
+            boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+          }}
+        >
+          <video
+            ref={videoRef}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              transform: 'scaleX(-1)',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              zIndex: 1
+            }}
+            playsInline
+            autoPlay
+            muted
+          />
+          <canvas
+            ref={canvasRef}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              transform: 'scaleX(-1)',
+              borderRadius: '8px',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              zIndex: 2
+            }}
+          />
+          
+          {/* 顔検出メッセージ */}
+          {!faceDetected && cameraReady && (
+            <Box
+              sx={{
+                position: 'absolute',
+                top: '20px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                zIndex: 4
+              }}
+            >
+              <Typography sx={{ color: 'white' }} variant="body2" align="center">
+                顔が検出されていません。正面を向いてください。
+              </Typography>
+            </Box>
+          )}
+          
+          {/* フレーム調整コントロール */}
+          <Box
+            sx={{
+              position: 'absolute',
+              bottom: '20px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: '90%',
+              maxWidth: '400px',
+              backgroundColor: 'transparent',
+              padding: '10px',
+              borderRadius: '8px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px',
+              zIndex: 3
+            }}
+          >
+            {/* サイズ調整 */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Typography sx={{ color: 'white', minWidth: '60px' }}>サイズ:</Typography>
+              <Slider
+                value={frameSize}
+                onChange={handleSizeChange}
+                min={0.5}
+                max={1.5}
+                step={0.01}
+                sx={{ color: 'white' }}
+              />
+            </Box>
+            
+            {/* 上下位置 */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Typography sx={{ color: 'white', minWidth: '60px' }}>上下位置:</Typography>
+              <Slider
+                value={frameOffsetY}
+                onChange={handleOffsetYChange}
+                min={0.3}
+                max={0.9}
+                step={0.01}
+                sx={{ color: 'white' }}
+              />
+            </Box>
+            
+            {/* 左右位置 */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Typography sx={{ color: 'white', minWidth: '60px' }}>左右位置:</Typography>
+              <Slider
+                value={frameOffsetX}
+                onChange={handleOffsetXChange}
+                min={-1}
+                max={1}
+                step={0.01}
+                sx={{ color: 'white' }}
+              />
+            </Box>
+            
+            {/* リセットボタン */}
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1 }}>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={handleReset}
+                sx={{ 
+                  backgroundColor: 'white', 
+                  color: 'black',
+                  '&:hover': {
+                    backgroundColor: '#e0e0e0',
+                  }
+                }}
+              >
+                調整をリセット
+              </Button>
+            </Box>
+          </Box>
+        </Box>
+      )}
+    </Box>
+  );
+};
+
+export default RealtimeTryOn;
