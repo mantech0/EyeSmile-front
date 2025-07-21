@@ -58,7 +58,7 @@ const RealtimeTryOn: React.FC<RealtimeTryOnProps> = ({
   const cameraRef = useRef<any>(null);
   
   // フレーム調整用の状態
-  const [frameSize, setFrameSize] = useState(1.2);
+  const [frameSize, setFrameSize] = useState(1.0);
   const [frameOffsetY, setFrameOffsetY] = useState(0.45);
   const [frameOffsetX, setFrameOffsetX] = useState(0.0);
   
@@ -527,7 +527,7 @@ const RealtimeTryOn: React.FC<RealtimeTryOnProps> = ({
       };
       
             // フレームのサイズを計算（顔の幅に基づいて調整）
-      const frameWidth = faceWidth * 1.3 * frameSize;
+      const frameWidth = faceWidth * 1.2 * frameSize;
       const aspectRatio = glassesImageRef.current.height / glassesImageRef.current.width;
       const frameHeight = frameWidth * aspectRatio;
       
@@ -564,15 +564,15 @@ const RealtimeTryOn: React.FC<RealtimeTryOnProps> = ({
   // リセットボタンをクリックした時の処理
   const handleReset = () => {
     // ディスプレイの大きさに応じてデフォルト値を調整
-    let defaultSize = 1.2;
+    let defaultSize = 1.0;
     if (canvasRef.current) {
       const width = canvasRef.current.width;
       if (width < 600) {
         // モバイル向け
-        defaultSize = 1.25;
+        defaultSize = 1.05;
       } else if (width > 1200) {
         // 大画面向け
-        defaultSize = 1.15;
+        defaultSize = 0.95;
       }
     }
     
